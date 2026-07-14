@@ -6,9 +6,9 @@ Section 7 experiments: certified spectral-gap benchmarks for AQC Max-Cut paths.
 
   H_I  = sum_i (I - X_i)/2          PSD, spec {0..N}, binomial multiplicities
 
-  H_P  = diag(c), c[x] = # uncut edges, vertex 0 pinned to spin +1 (kills Z2)
+  H_P  = diag(c), c[x] = # uncut edges
 
-Blocks map to paper subsections:
+Phases of the code generation
 
   [7.1] instance generation        [7.2] certificates (oracle + poly inputs)
 

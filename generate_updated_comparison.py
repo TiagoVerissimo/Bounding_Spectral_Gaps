@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 
-from refernce_implementation import er_graph, pinned_cost_vector
+from main import er_graph, pinned_cost_vector
 from maxcut_gap_benchmark import (
     driver_matrix, exact_gap_curve, weyl_lipschitz_constant,
     lowest_eigs, path_hamiltonian, adaptive_weyl, weyl_envelope

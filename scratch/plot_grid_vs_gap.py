@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # Add current workspace directory to sys.path
 sys.path.append(os.path.abspath("c:/Users/c4065577/Documents/Quantun_Spectral"))
 
-from refernce_implementation import (
+from main import (
     PathOperator, er_graph, pinned_cost_vector, path_lipschitz, certified_sweep, lowest_two
 )
 
