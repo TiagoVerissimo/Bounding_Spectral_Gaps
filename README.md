@@ -1,4 +1,4 @@
-# Quantum Spectral Gap Benchmarking
+# Lower_Bounding_Spectral_Gaps
 
 This repository contains the code and data for the computational study corresponding to Section 7 of the paper: *"A Matrix Analysis Approach to Spectral Gap Estimation in Adiabatic Quantum Computing"*.
 
