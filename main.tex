@@ -1,0 +1,1265 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2cm, right=2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{tgtermes}
+
+% --- UNIVERSAL PREAMBLE BLOCK ---
+\usepackage[english, provide=*]{babel}
+\babelprovide[import, onchar=ids fonts]{english}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{enumitem}
+
+\setlist[itemize]{label=-}
+
+% Theorem Environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{corollary}[theorem]{Corollary}
+
+% Custom Command Definitions
+\newcommand{\hilb}{\mathcal{H}}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\ee}{\mathrm{e}}
+\newcommand{\ii}{\mathrm{i}}
+\newcommand{\bra}[1]{\langle #1 |}
+\newcommand{\ket}[1]{| #1 \rangle}
+\newcommand{\bracket}[2]{\langle #1 | #2 \rangle}
+\newcommand{\opvalue}[3]{\langle #1 | #2 | #3 \rangle}
+\newcommand{\norm}[1]{\| #1 \|}
+\newcommand{\Tr}{\operatorname{Tr}}
+\newcommand{\Herm}{\operatorname{Herm}}
+\newcommand{\spec}{\operatorname{spec}}
+
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=magenta, urlcolor=teal]{hyperref}
+
+\title{\textbf{A Matrix Analysis Approach to Spectral Gap Estimation in Adiabatic Quantum Computing}}
+
+\author{
+  \textbf{Tiago Verissimo}\\
+  \small \textit{School of Mathematics, Statistics and Physics at Newcastle University} \\
+}
+\date{\small \today}
+
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Estimating lower bounds for the instantaneous spectral gap $\Delta(s)$ is central to understanding the runtime of adiabatic quantum computing (AQC). This paper develops a finite-dimensional Matrix Analysis framework for certifying eigenvalue motion along adiabatic paths. Weyl's Inequality is used to prove norm-based stability estimates and a Lipschitz bound for local gap fluctuations, while its positive-semidefinite monotonicity corollary yields componentwise energy-floor certificates. This monotonicity principle is applied to positive-semidefinite catalyst terms and constraint-penalty Hamiltonians to show that such mechanisms rigorously raise indexed energy levels relative to unperturbed paths. The paper also uses the restricted $T_1^n$ subfamily of Horn inequalities to derive spectral-profile gap certificates and explain interlacing behavior for low-rank perturbations. To demonstrate the practical utility of these tools, we perform empirical validations on finite-size Max-Cut instances of Erdős-Rényi graphs. We show that boundary spectral data alone can certify strict gap positivity near the endpoints of the schedule. Furthermore, we leverage the Weyl-Lipschitz bounds to design an iterative, hybrid adaptive continuation algorithm. This method dynamically inserts intermediate anchors only where necessary, providing formal certification of the spectral gap across the entire adiabatic path while substantially minimizing the number of exact Hamiltonian diagonalizations compared to standard uniform grid approaches.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction and Motivation}
+Adiabatic quantum computing (AQC) is governed by the adiabatic theorem of quantum mechanics, which offers a robust framework for solving hard combinatorial optimization problems as argued in \cite{farhi2000quantumcomputationadiabaticevolution}. The system is initialized in the known, easily prepared ground state of an initial driver Hamiltonian $H_I$. The system then evolves according to an interpolating, time-dependent Hamiltonian
+\begin{equation}
+H(s)=(1-s)H_I+sH_P, \qquad s\in[0,1],
+\end{equation}
+where $s=t/T$ is the normalized scheduling parameter, and $T$ is the total coherent runtime of the computation, as introduced in \cite{farhi2000quantumcomputationadiabaticevolution}.
+
+The standard adiabatic theorem states that to prevent transitions from the ground state $\ket{\psi_0(s)}$ to the first excited state $\ket{\psi_1(s)}$, the total evolution time $T$ must scale inversely with the square of the minimum instantaneous spectral gap:
+\begin{equation}
+\Delta_{\min}=\min_{s\in[0,1]}\Delta(s),
+\qquad
+\Delta(s)=E_1(s)-E_0(s),
+\end{equation}
+where $E_0(s)$ and $E_1(s)$ denote the two lowest eigenvalues of $H(s)$.
+
+The corresponding normalized instantaneous eigenstates are denoted by $\ket{\psi_0(s)}$ and $\ket{\psi_1(s)}$, respectively, so that
+\begin{equation}
+H(s)\ket{\psi_0(s)}=E_0(s)\ket{\psi_0(s)},
+\qquad
+H(s)\ket{\psi_1(s)}=E_1(s)\ket{\psi_1(s)}.
+\end{equation}
+Thus $\ket{\psi_0(s)}$ is the instantaneous ground state and $\ket{\psi_1(s)}$ is the instantaneous first excited state along the adiabatic path. Specifically, under standard smoothness assumptions, the runtime bound is typically expressed as
+\begin{equation}
+T \gg \frac{\max_s \left| \opvalue{\psi_1(s)}{\frac{\dd H(s)}{\dd s}}{\psi_0(s)} \right|}{\Delta_{\min}^2}.
+\end{equation}
+This is the standard scaling form used in \cite{farhi2000quantumcomputationadiabaticevolution}.
+
+As the system size $N$ (the number of qubits) increases, \(\Delta_{\min}\) often decreases rapidly. In the presence of first-order quantum phase transitions (QPTs), \(\Delta_{\min}\) can become small, causing the required runtime $T$ to explode exponentially, rendering the computation inefficient as in \cite{smelyanskiy2002dynamicsquantumadiabaticevolution} and \cite{PhysRevResearch.5.043236}.
+
+Several studies have sought to mitigate $\Delta_{\min}$ by choosing alternative heuristic paths from $H_I$ to a fixed $H_P$ and studying how $\Delta_{\min}$ varies; examples of such approaches are described in \cite{PhysRevResearch.5.043236}, \cite{hnzj-j7kt}, and \cite{farhi2000quantumcomputationadiabaticevolution}.
+
+This paper develops a mathematically rigorous framework for these heuristics by clarifying how $H_I$ and $H_P$ interact during adiabatic evolution with respect to lower bounds on the spectral gap.
+
+To systematically analyze, mitigate, or bypass these bottlenecks, researchers require mathematically rigorous tools to bound and estimate $\Delta(s)$. Here we formalize two distinct yet complementary methodologies:
+\begin{enumerate}
+    \item \textbf{Weyl perturbation formalism:} A global, coarse-grained bounding method based on the classical inequalities of Hermann Weyl. It requires no structural assumptions on the perturbation operator and compresses its effect into spectral-norm estimates, yielding robust but worst-case control of eigenvalue drift and local gap fluctuations.
+    \item \textbf{Restricted Horn inequality formalism:} A refined eigenvalue-based method that uses the $T_1^n$ Horn subfamily, rather than the full Horn--Klyachko--Knutson--Tao system, to retain spectral-profile information about the summand Hamiltonians. In particular, these $T_1^n$ certificates can exploit low-rank or localized perturbations to prove interlacing constraints and structural information about the perturbed spectrum that is different from, but not uniformly stronger than, Weyl norm control.
+\end{enumerate}
+
+
+\section{Related Work and Novelty}
+This paper positions itself at the intersection of classical matrix analysis and the physical engineering of adiabatic pathways. The literature driving this study can be categorized into three major streams:
+
+\subsection{Classical Spectral Stability and Subspace Rotations}
+The static behavior of eigenvalues under additive perturbations is governed by the regular perturbation theory of Kato \cite{Kato1966} and the spectral variation metrics surveyed by Bhatia \cite{Bhatia2007}. While Weyl's inequalities provide worst-case estimates on individual eigenvalues, they ignore eigenvector geometry. To address how state vectors track these moving energy levels, the numerical linear algebra community developed eigenspace stability bounds, most notably the Davis-Kahan $\sin\theta$ theorem \cite{DavisKahan1970} and its modern $\ell_\infty$ and small-gap refinements \cite{Fan2018, TranVu2022}. Our work translates these static, coordinate-free bounds into continuous, time-parameterized schedules $H(s)$ to certify AQC paths.
+
+\subsection{Rigorous Adiabatic Theorems and Local Scheduling}
+The "folk" adiabatic condition requiring $T \propto \Delta^{-2}$ is often insufficient to guarantee high-fidelity state tracking in many-body systems. Rigorous adiabatic theorems developed by Jansen, Ruskai, and Seiler (JRS) \cite{JRS2007} establish dimension-independent timescales but require integrating complex derivatives of the Hamiltonian over the entire path. To optimize these runtimes, local adiabatic scheduling—such as the Roland-Cerf schedule $ds/dt \propto \Delta^2(s)$ \cite{RolandCerf2002}—aims to decelerate the system only in critical avoided-crossing regions. Our local gap propagation certificates directly simplify these rigorous integrations by providing interval-based analytical guarantees.
+
+\subsection{Hamiltonian Engineering: Constraints and Catalysts}
+Mapping NP-hard optimization problems to physical hardware relies on Andrew Lucas's formulations of quadratic unconstrained binary optimization (QUBO) constraints \cite{Lucas2014}. To navigate first-order quantum phase transitions (QPTs) where the gap closes exponentially, researchers introduce transverse catalysts (both stoquastic and non-stoquastic) \cite{SekiNishimori2012, Albash2019, Crosson2020designing}. Furthermore, the formal framework of Spectral Gap Amplification (SGA) developed by Somma and Boixo \cite{SommaBoixo2013} provides a mechanism to quadratically open gaps. We apply positive-semidefinite (PSD) monotonicity to these models, clarifying what can be rigorously certified componentwise.
+
+The individual matrix inequalities used here are classical. The contribution of this paper is not to prove new spectral perturbation theorems, but to assemble them into an AQC-facing certification framework with explicit gap-propagation, monotonicity, and low-rank interlacing certificates.
+
+\section{Contributions}
+
+
+The main contribution of this paper is to turn spectral-gap estimation for AQC into a collection of finite-dimensional eigenvalue-certification problems. More precisely, the paper studies Hermitian paths of the form
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1],
+\end{equation}
+with ordered eigenvalues
+\begin{equation}
+E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s),
+\qquad
+\Delta(s)=E_1(s)-E_0(s),
+\end{equation}
+and derives sufficient conditions, expressed only in terms of endpoint spectra, operator norms, variational expectations, or restricted $T_1^n$ Horn data, that certify lower bounds on \(\Delta(s)\). The specific mathematical contributions are as follows.
+
+\begin{enumerate}
+    \item \textbf{A Weyl-stability theorem for the AQC gap.} For arbitrary Hermitian endpoint Hamiltonians $H_I,H_P\in\Herm(d)$, the paper proves that every eigenvalue branch of the affine path is Lipschitz with constant $\norm{H_P-H_I}_2$:
+    \begin{equation}
+    |E_k(t)-E_k(s)|\le |t-s|\,\norm{H_P-H_I}_2,
+    \qquad k=0,\dots,d-1.
+    \end{equation}
+    As a direct consequence, the first gap satisfies
+    \begin{equation}
+    |\Delta(t)-\Delta(s)|\le 2|t-s|\,\norm{H_P-H_I}_2.
+    \end{equation}
+    Equivalently, a gap certificate at a single point $s_0$ propagates to the interval
+    \begin{equation}
+    \Delta(s)\ge \Delta(s_0)-2|s-s_0|\,\norm{H_P-H_I}_2,
+    \end{equation}
+    so the method gives an explicit neighbourhood on which the gap is certified positive whenever the right-hand side is positive.
+
+    \item \textbf{A positive-semidefinite energy-floor certificate.} Under the additional hypotheses
+    \begin{equation}
+    H_I\ge 0,
+    \qquad
+    H_P\ge 0,
+    \end{equation}
+    the paper applies Weyl monotonicity twice to prove the componentwise bound
+    \begin{equation}
+    E_k(s)
+    \ge
+    \max\{(1-s)E_k(H_I),\,sE_k(H_P)\},
+    \qquad k=0,
+    \dots,d-1.
+    \end{equation}
+    Combining the $k=1$ instance with the Rayleigh--Ritz upper bound obtained from a ground state $\ket{\psi_I}$ of $H_I$ yields the explicit gap certificate
+    \begin{equation}
+    \Delta(s)
+    \ge
+    \max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
+    -(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
+    \end{equation}
+    Hence the paper gives a checkable sufficient condition for an open gap: the right-hand side must remain strictly positive on the parameter interval.
+
+    \item \textbf{Monotonicity theorems for catalysts and constraint penalties.} For a catalyzed path
+    \begin{equation}
+    H_{\mathrm{cat}}(s)=H(s)+f(s)H_C,
+    \qquad f(s)\ge 0,
+    \qquad H_C\ge 0,
+    \end{equation}
+    the paper proves the indexed eigenvalue inequality
+    \begin{equation}
+    E_k^{\mathrm{cat}}(s)\ge E_k(s),
+    \qquad k=0,\dots,d-1.
+    \end{equation}
+    For a constrained problem Hamiltonian
+    \begin{equation}
+    H_P=H_{\mathrm{cost}}+\gamma H_{\mathrm{constraints}},
+    \qquad \gamma>0,
+    \qquad H_{\mathrm{constraints}}\ge 0,
+    \end{equation}
+    and the corresponding unconstrained path $H_{\mathrm{unc}}(s)=(1-s)H_I+sH_{\mathrm{cost}}$, it proves
+    \begin{equation}
+    \lambda_k(H(s))\ge \lambda_k(H_{\mathrm{unc}}(s)),
+    \qquad k=0,\dots,d-1.
+    \end{equation}
+    These are precise index-by-index comparison theorems: positive-semidefinite catalysts and penalties cannot lower any ordered energy level, but the paper also notes that these monotonicity statements alone do not imply $\Delta_{\mathrm{cat}}(s)\ge\Delta(s)$ or gap amplification.
+
+    \item \textbf{A $T_1^n$ Horn spectral-profile gap certificate.} For Hermitian matrices $C=A+B$ with spectra written in non-increasing order
+    \begin{equation}
+    \alpha_1\ge\cdots\ge\alpha_n,
+    \qquad
+    \beta_1\ge\cdots\ge\beta_n,
+    \qquad
+    \gamma_1\ge\cdots\ge\gamma_n,
+    \end{equation}
+    the paper derives from the $T_1^n$ Horn inequalities the lower bound
+    \begin{equation}
+    \gamma_{n-1}-\gamma_n
+    \ge
+    \max\{\alpha_n+\beta_{n-1},\alpha_{n-1}+\beta_n\}
+    -
+    \min_{1\le i\le n}\{\alpha_i+\beta_{n+1-i}\}.
+    \end{equation}
+    This is a spectral-profile certificate for the low-energy gap of $C$: unlike the Weyl estimate, it depends on the arrangement of the eigenvalues of both summands, not only on $\norm{B}_2$.
+
+    \item \textbf{A $T_1^n$ Horn interlacing certificate for rank-one perturbations.} In the structured case
+    \begin{equation}
+    B=-s\ket{m}\bra{m},
+    \qquad s\ge 0,
+    \qquad
+    \spec(B)=(0,\dots,0,-s),
+    \end{equation}
+    the paper shows that the $T_1^n$ Horn inequalities imply, for $C=A+B$,
+    \begin{equation}
+    \alpha_1\ge \gamma_1\ge \alpha_2\ge \gamma_2\ge \cdots \ge \alpha_{d-1}\ge \gamma_{d-1}\ge \alpha_d.
+    \end{equation}
+    Thus all but the lowest perturbed branch are trapped between consecutive eigenvalues of the unperturbed Hamiltonian. This gives a different structural statement from the Weyl norm estimate
+    \begin{equation}
+    \alpha_k-s\le \gamma_k\le \alpha_k,
+    \end{equation}
+    which controls every branch uniformly by the perturbation norm.
+\end{enumerate}
+
+Taken together, these contributions show how Weyl estimates, positive-semidefinite monotonicity, and the $T_1^n$ Horn inequalities provide complementary analytic tools for Hamiltonian design in AQC. The framework is useful not only for bounding a fixed path, but also for comparing candidate interpolations, catalysts, and penalty terms when setting up optimization problems for efficient adiabatic computation.
+
+\section{Mathematical Preliminaries}
+
+This section fixes the notation used throughout the paper. The basic definitions are standard in quantum information theory; for further background, see \cite{Nielsen_Chuang_2010} and \cite{Watrous_2018}. Let $\hilb \cong \mathbb{C}^{2^N}$ denote the finite-dimensional Hilbert space representing $N$ qubits. 
+\begin{definition}[Hermitian Operators]
+An operator $H: \hilb \to \hilb$ is self-adjoint (Hermitian) if $H = H^\dagger$. We denote the set of $d \times d$ Hermitian matrices as $\Herm(d)$, where $d = 2^N$.
+\end{definition}
+
+By the spectral theorem, as presented in \cite{Watrous_2018}, any $H \in \Herm(d)$ possesses a complete orthonormal eigenbasis with real eigenvalues. Throughout the paper, generic matrix eigenvalues are indexed from $1$ to $d$ and ordered as
+\begin{equation}
+\lambda_1(H)\le \lambda_2(H)\le \cdots \le \lambda_d(H),
+\qquad
+\spec(H)=\{\lambda_1(H),\lambda_2(H),\dots,\lambda_d(H)\}.
+\end{equation}
+
+\begin{definition}[Spectral Norm]
+The spectral norm (or operator norm) of an operator $A$ on $\hilb$, denoted $\norm{A}_2$, is its largest singular value:
+\begin{equation}
+\norm{A}_2 \equiv \sup_{\ket{\phi} \neq 0} \frac{\norm{A\ket{\phi}}}{\norm{\ket{\phi}}}
+\end{equation}
+\end{definition}
+
+\begin{remark}
+If $A$ is Hermitian, then the spectral theorem gives an orthonormal eigenbasis $\{\ket{u_j}\}_{j=1}^d$ with $A\ket{u_j}=\lambda_j(A)\ket{u_j}$. Any normalized vector can be written as $\ket{\phi}=\sum_j c_j\ket{u_j}$ with $\sum_j |c_j|^2=1$. Hence
+\begin{equation}
+\norm{A\ket{\phi}}^2 = \sum_{j=1}^d |c_j|^2 |\lambda_j(A)|^2 \le \left(\max_{1\le j\le d}|\lambda_j(A)|^2\right)\sum_{j=1}^d |c_j|^2,
+\end{equation}
+so $\norm{A\ket{\phi}}\le \max_j |\lambda_j(A)|$ for every normalized $\ket{\phi}$. Equality is achieved by choosing $\ket{\phi}$ to be an eigenvector whose eigenvalue has maximal absolute value. Therefore
+\begin{equation}
+\norm{A}_2 = \max_{1\le j\le d} |\lambda_j(A)|.
+\end{equation}
+Since the eigenvalues are sorted in non-decreasing order and $|x|$ is largest at one of the endpoints of an interval, this becomes
+\begin{equation}
+\norm{A}_2 = \max \{|\lambda_1(A)|, |\lambda_d(A)|\}.
+\end{equation}
+\end{remark}
+
+The underlying mathematical machinery driving both variational ceilings and Weyl-type stability bounds is the Courant-Fischer minimax theorem \cite{Horn_Johnson_2012}. For any self-adjoint operator $H \in \Herm(d)$ with ordered eigenvalues $\lambda_1 \le \lambda_2 \le \dots \le \lambda_d$, the theorem provides a variational characterization of the entire spectrum:
+
+\begin{equation}
+\lambda_k(H) = \min_{\dim V = k} \, \max_{|f\rangle \in V \setminus \{0\}} \frac{\langle f | H | f \rangle}{\langle f | f \rangle} = \max_{\dim W = d-k+1} \, \min_{|f\rangle \in W \setminus \{0\}} \frac{\langle f | H | f \rangle}{\langle f | f \rangle}
+\end{equation}
+
+This minimax characterization explains the algebraic mechanism behind Cauchy's interlacing theorem: restricting a Hamiltonian to a coordinate subspace (such as the feasible manifold in constrained optimization) traps the intermediate eigenvalues, preventing them from falling below the unperturbed baseline. Furthermore, this variational foundation underpins modern Quantum Subspace Diagonalization (QSD) and quantum Krylov methods \cite{Parrish2019, Stair2020}.
+
+In AQC, the interpolating Hamiltonian $H(s)$ is a continuous curve in $\Herm(d)$. To emphasize the ground state, instantaneous energy levels are indexed from $0$ to $d-1$:
+\begin{equation}
+H(s)\ket{\psi_k(s)}=E_k(s)\ket{\psi_k(s)},
+\qquad
+E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s).
+\end{equation}
+The gap function is $\Delta(s)=E_1(s)-E_0(s)$. Thus $E_k(s)$ corresponds to $\lambda_{k+1}(H(s))$ under the generic matrix-indexing convention.
+
+\section{Lower Bounding Gaps via Weyl's Inequality}
+The first approach uses a fundamental theorem of matrix analysis due to Hermann Weyl, which bounds the eigenvalues of a perturbed Hermitian matrix without requiring the eigenvectors of the perturbation.
+
+\subsection{Weyl's Perturbation Theorem}
+\begin{theorem}[Weyl's Inequality]
+\label{thm:weyl}
+Let $A, B \in \Herm(d)$ be two Hermitian matrices, and let $C = A + B$. Let the eigenvalues of $A, B,$ and $C$ be sorted in non-decreasing order:
+\begin{equation}
+\lambda_k(A), \quad \lambda_k(B), \quad \lambda_k(C) \quad \text{for } k=1,\dots,d
+\end{equation}
+Then, for every $k \in \{1, \dots, d\}$, the following inequality holds:
+\begin{equation}
+\lambda_k(A) + \lambda_1(B) \le \lambda_k(A + B) \le \lambda_k(A) + \lambda_d(B)
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+    Proof omitted, see \cite{Horn_Johnson_2012}.
+\end{proof}
+
+An immediate and powerful corollary of Weyl's Inequality relates the spectral norm of the perturbation to the maximum possible shift in any eigenvalue.
+
+\begin{corollary}[Eigenvalue Stability]
+\label{cor:eigenvalue-stability}
+Let $A, B \in \Herm(d)$. Then
+\begin{equation}
+|\lambda_k(A + B) - \lambda_k(A)| \le \norm{B}_2, \quad \forall k \in \{1, \dots, d\}
+\end{equation}
+\end{corollary}
+\begin{proof}
+Because $B$ is Hermitian, all of its eigenvalues are real and its spectral norm is the largest absolute value among them:
+\begin{equation}
+\norm{B}_2 = \max_{1\le j\le d} |\lambda_j(B)|.
+\end{equation}
+Therefore every eigenvalue of $B$ lies in the interval $[-\norm{B}_2,\norm{B}_2]$. In particular, the smallest eigenvalue satisfies $\lambda_1(B) \ge -\norm{B}_2$, and the largest eigenvalue satisfies $\lambda_d(B) \le \norm{B}_2$. Applying Weyl's Inequality gives
+\begin{equation}
+\lambda_k(A) + \lambda_1(B) \le \lambda_k(A+B) \le \lambda_k(A) + \lambda_d(B).
+\end{equation}
+Replacing $\lambda_1(B)$ by the weaker lower bound $-\norm{B}_2$ and $\lambda_d(B)$ by the weaker upper bound $\norm{B}_2$ yields
+\begin{equation}
+\lambda_k(A) - \norm{B}_2 \le \lambda_k(A+B) \le \lambda_k(A) + \norm{B}_2.
+\end{equation}
+Subtracting \(\lambda_k(A)\) throughout gives
+\begin{equation}
+-\norm{B}_2 \le \lambda_k(A+B)-\lambda_k(A) \le \norm{B}_2,
+\end{equation}
+which is equivalent to $|\lambda_k(A+B)-\lambda_k(A)|\le \norm{B}_2$.
+\end{proof}
+
+\begin{corollary}[Positive-Semidefinite Monotonicity]
+\label{cor:psd-monotonicity}
+Let $A, B \in M_n$ be Hermitian. Assume that $B$ is positive-semidefinite and that the eigenvalues of $A$ and $A+B$ are arranged in non-decreasing order. Then
+\begin{equation}
+\lambda_k(A)\le \lambda_k(A+B)\quad\text{for all } k=1,2,\ldots,n
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+  Since $B\ge 0$, its smallest eigenvalue satisfies $\lambda_1(B)\ge 0$. The result follows by applying Theorem~\ref{thm:weyl}.
+\end{proof}
+
+
+\subsection{Application to AQC: Bounding Local Gap Fluctuations with Weyl's Inequality}
+
+\begin{proposition}[Lipschitz Bound for the Adiabatic Gap]
+\label{prop:lipschitz-gap}
+Let
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1],
+\end{equation}
+be an affine adiabatic path of Hermitian Hamiltonians. For each $s$, write the ordered eigenvalues of $H(s)$ as
+\begin{equation}
+E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s),
+\end{equation}
+and define the first spectral gap by
+\begin{equation}
+\Delta(s)=E_1(s)-E_0(s).
+\end{equation}
+Then, for every $s,t\in[0,1]$,
+\begin{equation}
+\label{eq:lipschitz-gap}
+|\Delta(t)-\Delta(s)|\le 2|t-s|\,\norm{H_P-H_I}_2.
+\end{equation}
+Equivalently, for $t=s+\delta s$ with $s+\delta s\in[0,1]$,
+\begin{equation}
+|\Delta(s+\delta s)-\Delta(s)|\le 2|\delta s|\,\norm{H_P-H_I}_2.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Let $s,t\in[0,1]$. Since the path is affine,
+\begin{equation}
+H(t)-H(s)=(t-s)(H_P-H_I).
+\end{equation}
+Set
+\begin{equation}
+V_{s,t}:=H(t)-H(s).
+\end{equation}
+Then $V_{s,t}$ is Hermitian and
+\begin{equation}
+\norm{V_{s,t}}_2=|t-s|\,\norm{H_P-H_I}_2.
+\end{equation}
+Applying the eigenvalue-stability corollary to the pair $A=H(s)$ and $B=V_{s,t}$ gives, for every eigenvalue index $k$,
+\begin{equation}
+|E_k(t)-E_k(s)|\le |t-s|\,\norm{H_P-H_I}_2.
+\end{equation}
+In particular, for $k=0$ and $k=1$, we obtain the one-sided estimates
+\begin{equation}
+E_0(t)\le E_0(s)+|t-s|\,\norm{H_P-H_I}_2
+\end{equation}
+and
+\begin{equation}
+E_1(t)\ge E_1(s)-|t-s|\,\norm{H_P-H_I}_2.
+\end{equation}
+Subtracting these inequalities yields
+\begin{align}
+\Delta(t)&=E_1(t)-E_0(t) \\
+&\ge \bigl(E_1(s)-|t-s|\,\norm{H_P-H_I}_2\bigr)
+      -\bigl(E_0(s)+|t-s|\,\norm{H_P-H_I}_2\bigr) \\
+&=\Delta(s)-2|t-s|\,\norm{H_P-H_I}_2.
+\end{align}
+Thus the gap cannot decrease faster than linearly, with slope controlled by $2\norm{H_P-H_I}_2$.
+
+Interchanging the roles of $s$ and $t$ in the same argument gives
+\begin{equation}
+\Delta(s)\ge \Delta(t)-2|t-s|\,\norm{H_P-H_I}_2,
+\end{equation}
+which is equivalent to
+\begin{equation}
+\Delta(t)\le \Delta(s)+2|t-s|\,\norm{H_P-H_I}_2.
+\end{equation}
+Combining the lower and upper estimates gives
+\begin{equation}
+|\Delta(t)-\Delta(s)|\le 2|t-s|\,\norm{H_P-H_I}_2.
+\end{equation}
+Finally, setting $t=s+\delta s$ gives the equivalent local form
+\begin{equation}
+|\Delta(s+\delta s)-\Delta(s)|\le 2|\delta s|\,\norm{H_P-H_I}_2,
+\end{equation}
+whenever $s+\delta s\in[0,1]$.
+\end{proof}
+
+\begin{remark}
+The bound in Eq.~\eqref{eq:lipschitz-gap} represents a rigorous \textit{worst-case bound}. It guarantees that the spectral gap is a Lipschitz-continuous function of the path parameter $s$, with a Lipschitz constant bounded by $2 \norm{H_P - H_I}_2$.
+
+Suppose that at a reference point $s_0\in[0,1]$ we have a rigorously certified gap
+ \begin{equation}
+\Delta(s_0)=\epsilon>0.
+\end{equation}
+Applying the Lipschitz estimate with $t=s$ and $s=s_0$ gives
+\begin{equation}
+\Delta(s)\ge \Delta(s_0)-2|s-s_0|\,\norm{H_P-H_I}_2
+=\epsilon-2|s-s_0|\,\norm{H_P-H_I}_2.
+\end{equation}
+Therefore the gap is guaranteed to remain strictly positive whenever
+\begin{equation}
+|s-s_0|<\frac{\epsilon}{2\norm{H_P-H_I}_2}.
+\end{equation}
+\end{remark}
+
+
+\begin{proposition}[Componentwise Floors and a Certified Gap Bound]
+\label{prop:componentwise-floors}
+Assume that the initial and problem Hamiltonians are positive-semidefinite,
+\begin{equation}
+H_I\ge 0,
+\qquad
+H_P\ge 0,
+\end{equation}
+and consider the affine adiabatic path
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1].
+\end{equation}
+Let the eigenvalues of $H(s)$ be written as
+\begin{equation}
+E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s),
+\end{equation}
+and write the eigenvalues of $H_I$ and $H_P$ in the same non-decreasing order. Then, for every $k=0,\dots,d-1$,
+\begin{equation}
+\label{eq:componentwise-floor}
+E_k(s)
+\ge
+\max\{(1-s)E_k(H_I),\,sE_k(H_P)\}.
+\end{equation}
+Moreover, if $\ket{\psi_I}$ is a normalized ground state of $H_I$, then the first spectral gap satisfies the certified lower bound
+\begin{equation}
+\label{eq:certified-gap-bound}
+\Delta(s)
+\ge
+\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
+-(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Fix $s\in[0,1]$. Since $H_P\ge 0$, the operator $sH_P$ is positive-semidefinite. We may therefore apply the positive-semidefinite monotonicity corollary to
+\begin{equation}
+A=(1-s)H_I,
+\qquad
+B=sH_P.
+\end{equation}
+This gives, for every eigenvalue index $k$,
+\begin{equation}
+E_k(s)=E_k(A+B)
+\ge E_k(A).
+\end{equation}
+Because $1-s\ge 0$, scaling the Hamiltonian $H_I$ by $1-s$ scales all of its eigenvalues by $1-s$. Hence
+\begin{equation}
+E_k(s)
+\ge
+(1-s)E_k(H_I).
+\end{equation}
+Similarly, since $(1-s)H_I$ is positive-semidefinite, we can instead write
+\begin{equation}
+A=sH_P,
+\qquad
+B=(1-s)H_I.
+\end{equation}
+Applying the same corollary gives
+\begin{equation}
+E_k(s)=E_k(A+B)
+\ge E_k(A)=sE_k(H_P).
+\end{equation}
+Combining the two lower bounds yields
+\begin{equation}
+E_k(s)
+\ge
+\max\{(1-s)E_k(H_I),\,sE_k(H_P)\}.
+\end{equation}
+This proves the componentwise eigenvalue floor.
+
+To obtain a lower bound on the spectral gap, we combine a lower bound on $E_1(s)$ with an upper bound on $E_0(s)$. Taking $k=1$ in the componentwise estimate gives
+\begin{equation}
+E_1(s)
+\ge
+\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}.
+\end{equation}
+On the other hand, the variational principle gives, for any normalized trial state $\ket{\psi}$,
+\begin{equation}
+E_0(s)\le \opvalue{\psi}{H(s)}{\psi}.
+\end{equation}
+Choosing $\ket{\psi}=\ket{\psi_I}$, where $\ket{\psi_I}$ is a ground state of $H_I$, gives
+\begin{align}
+E_0(s)
+&\le \opvalue{\psi_I}{(1-s)H_I+sH_P}{\psi_I}\\
+&=(1-s)E_0(H_I)+s\opvalue{\psi_I}{H_P}{\psi_I}.
+\end{align}
+Therefore
+\begin{align}
+\Delta(s)&=E_1(s)-E_0(s)\\
+&\ge
+\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
+-(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
+\end{align}
+This is the claimed certified lower bound.
+\end{proof}
+
+
+\begin{proposition}[Positive-Semidefinite Catalysts Raise Energy Levels]
+\label{prop:psd-catalysts}
+Consider a catalyst-assisted adiabatic path of the form
+\begin{equation}
+H_{\mathrm{cat}}(s)=H(s)+f(s)H_C,
+\qquad
+H(s)=(1-s)H_I+sH_P,
+\end{equation}
+where $H_C$ is Hermitian and $f(s)$ is a real-valued scheduling function. Assume that
+\begin{equation}
+H_C\ge 0,
+\qquad
+f(s)\ge 0
+\qquad
+\text{for all }s\in[0,1].
+\end{equation}
+Let
+\begin{equation}
+E_k(s)=\lambda_k(H(s)),
+\qquad
+E_k^{\mathrm{cat}}(s)=\lambda_k(H_{\mathrm{cat}}(s)),
+\end{equation}
+with eigenvalues arranged in non-decreasing order. Then, for every $k=0,\dots,d-1$ and every $s\in[0,1]$,
+\begin{equation}
+E_k^{\mathrm{cat}}(s)\ge E_k(s).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Fix $s\in[0,1]$. Set
+\begin{equation}
+A=H(s),
+\qquad
+B=f(s)H_C.
+\end{equation}
+Since $H_I$ and $H_P$ are Hermitian, the affine combination $H(s)$ is Hermitian, so $A$ is Hermitian. Since $H_C\ge 0$ and $f(s)\ge 0$, the perturbation $B=f(s)H_C$ is positive-semidefinite.
+
+We can therefore apply the positive-semidefinite monotonicity corollary to the pair $A$ and $B$. It gives
+\begin{equation}
+\lambda_k(A)\le \lambda_k(A+B),
+\qquad k=0,\dots,d-1.
+\end{equation}
+Substituting the definitions of $A$ and $B$ yields
+\begin{equation}
+\lambda_k(H(s))
+\le
+\lambda_k(H(s)+f(s)H_C).
+\end{equation}
+By definition,
+\begin{equation}
+\lambda_k(H(s))=E_k(s),
+\qquad
+\lambda_k(H(s)+f(s)H_C)=E_k^{\mathrm{cat}}(s).
+\end{equation}
+Hence
+\begin{equation}
+E_k(s)\le E_k^{\mathrm{cat}}(s),
+\qquad k=0,\dots,d-1,
+\end{equation}
+which proves the claim.
+\end{proof}
+
+
+\begin{proposition}[Constraint Penalties Raise the AQC Energy Levels]
+\label{prop:constraint-penalties}
+Consider a constrained-optimization adiabatic path
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1],
+\end{equation}
+where the problem Hamiltonian decomposes as
+\begin{equation}
+H_P=H_{\mathrm{cost}}+\gamma H_{\mathrm{constraints}},
+\qquad \gamma>0.
+\end{equation}
+Assume that $H_I$, $H_{\mathrm{cost}}$, and $H_{\mathrm{constraints}}$ are Hermitian and that
+\begin{equation}
+H_{\mathrm{constraints}}\ge 0.
+\end{equation}
+Define the unconstrained adiabatic path
+\begin{equation}
+H_{\mathrm{unc}}(s)=(1-s)H_I+sH_{\mathrm{cost}}.
+\end{equation}
+Then, with eigenvalues arranged in non-decreasing order, for every $k=1,\dots,n$ and every $s\in[0,1]$,
+\begin{equation}
+\lambda_k(H(s))\ge \lambda_k(H_{\mathrm{unc}}(s)).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Substituting the decomposition of $H_P$ into the adiabatic path gives
+\begin{align}
+H(s)
+&=(1-s)H_I+s\left(H_{\mathrm{cost}}+\gamma H_{\mathrm{constraints}}\right)\\
+&=(1-s)H_I+sH_{\mathrm{cost}}+s\gamma H_{\mathrm{constraints}}.
+\end{align}
+Fix $s\in[0,1]$ and set
+\begin{equation}
+A=(1-s)H_I+sH_{\mathrm{cost}},
+\qquad
+B=s\gamma H_{\mathrm{constraints}}.
+\end{equation}
+Then $A=H_{\mathrm{unc}}(s)$ and $A+B=H(s)$. Since $H_I$ and $H_{\mathrm{cost}}$ are Hermitian and $s$ is real, $A$ is Hermitian. Since $H_{\mathrm{constraints}}\ge 0$, $s\ge 0$, and $\gamma>0$, the perturbation $B=s\gamma H_{\mathrm{constraints}}$ is positive-semidefinite.
+
+Corollary~\ref{cor:psd-monotonicity} therefore applies to $A$ and $B$, yielding
+\begin{equation}
+\lambda_k(A)\le \lambda_k(A+B),
+\qquad k=0,\dots,d-1.
+\end{equation}
+Using $A=H_{\mathrm{unc}}(s)$ and $A+B=H(s)$ gives
+\begin{equation}
+\lambda_k(H_{\mathrm{unc}}(s))\le \lambda_k(H(s)),
+\qquad k=0,\dots,d-1,
+\end{equation}
+which is equivalent to the claimed inequality.
+\end{proof}
+
+\subsection{Example: Weyl Bound (Proposition~\ref{prop:lipschitz-gap})}
+
+Consider the one-qubit interpolation generated by two Pauli Hamiltonians,
+\begin{equation}
+H_I=-\sigma_x=\begin{pmatrix}0&-1\\-1&0\end{pmatrix},
+\qquad
+H_P=-\sigma_z=\begin{pmatrix}-1&0\\0&1\end{pmatrix}.
+\end{equation}
+The affine path is
+\begin{equation}
+H(s)=(1-s)H_I+sH_P
+=\begin{pmatrix}-s&-(1-s)\\-(1-s)&s\end{pmatrix},
+\qquad s\in[0,1].
+\end{equation}
+This example is useful because the exact gap can be computed explicitly and then compared with the Weyl lower bound from the previous subsection.
+
+First, compute the exact eigenvalues. The characteristic equation is
+\begin{align}
+0&=\det(H(s)-EI) \\
+&=\det\begin{pmatrix}-s-E&-(1-s)\\-(1-s)&s-E\end{pmatrix} \\
+&=E^2-s^2-(1-s)^2.
+\end{align}
+Hence
+\begin{equation}
+E_{\pm}(s)=\pm\sqrt{s^2+(1-s)^2}
+=\pm\sqrt{2s^2-2s+1}.
+\end{equation}
+Therefore the exact instantaneous gap is
+\begin{equation}
+\Delta(s)=E_+(s)-E_-(s)=2\sqrt{s^2+(1-s)^2}.
+\end{equation}
+The minimum occurs at $s=1/2$, where
+\begin{equation}
+\Delta_{\min}=\Delta(1/2)=\sqrt{2}.
+\end{equation}
+Thus, for this particular path, the true gap never closes.
+
+Now compare this exact result with the Weyl estimate. The perturbation direction along the path is
+\begin{equation}
+H_P-H_I=\begin{pmatrix}-1&1\\1&1\end{pmatrix}.
+\end{equation}
+The eigenvalues of $H_P - H_I$ are $\pm\sqrt{2}$. Hence
+\begin{equation}
+\norm{H_P-H_I}_2=\sqrt{2}.
+\end{equation}
+Taking $s_0=0$ as the certified reference point gives
+\begin{equation}
+\epsilon=\Delta(0)=2.
+\end{equation}
+The global safety-floor estimate from the previous subsection then gives
+\begin{equation}
+\Delta(s)\ge \Delta(0)-2|s-0|\,\norm{H_P-H_I}_2
+=2-2\sqrt{2}\,s.
+\end{equation}
+Consequently, Weyl's bound certifies strict positivity only when
+\begin{equation}
+2-2\sqrt{2}\,s>0
+\qquad\Longleftrightarrow\qquad
+s<\frac{1}{\sqrt{2}}\approx0.707.
+\end{equation}
+This is a rigorous statement, but it is only a certificate: it does not say that the gap closes after $s=1/\sqrt{2}$. It only says that this particular norm-based argument no longer proves positivity beyond that point.
+
+At the true minimum point $s=1/2$, the comparison is
+\begin{equation}
+\Delta(1/2)=\sqrt{2}\approx1.414,
+\end{equation}
+whereas the Weyl lower bound gives
+\begin{equation}
+2-2\sqrt{2}(1/2)=2-\sqrt{2}\approx0.586.
+\end{equation}
+Thus the Weyl estimate is valid and conservative for this example: it underestimates the gap because it uses only the operator norm of the perturbation direction $H_P-H_I$. In other examples this norm-based universality is exactly the advantage of Weyl's Inequality, since it applies without spectral-profile assumptions. The point here is not that another certificate is generally better, but that each certificate records different information about the same path.
+
+\subsection{Example: Componentwise Floor (Proposition~\ref{prop:componentwise-floors})}
+To illustrate Proposition~\ref{prop:componentwise-floors}, we modify the one-qubit Pauli system by shifting both operators by the identity matrix to guarantee they are positive-semidefinite. Let
+\begin{equation}
+H_I = I - \sigma_x = \begin{pmatrix} 1 & -1 \\ -1 & 1 \end{pmatrix}, \quad H_P = I - \sigma_z = \begin{pmatrix} 0 & 0 \\ 0 & 2 \end{pmatrix}
+\end{equation}
+The sorted eigenvalues of the boundary operators are $\spec(H_I) = \{0, 2\}$ and $\spec(H_P) = \{0, 2\}$. The normalized ground state of $H_I$ is the uniform superposition state $|\psi_I\rangle = |+\rangle = \frac{1}{\sqrt{2}}(|0\rangle + |1\rangle)$. 
+
+The full affine interpolation path is given by:
+\begin{equation}
+H(s) = (1-s)(I - \sigma_x) + s(I - \sigma_z) = I - (1-s)\sigma_x - s\sigma_z
+\end{equation}
+An exact diagonalization yields the instantaneous energy levels:
+\begin{equation}
+E_0(s) = 1 - \sqrt{2s^2 - 2s + 1}, \quad E_1(s) = 1 + \sqrt{2s^2 - 2s + 1}
+\end{equation}
+which yields an exact gap of $\Delta_{\mathrm{exact}}(s) = 2\sqrt{2s^2 - 2s + 1}$. 
+
+We now apply Proposition~\ref{prop:componentwise-floors} to derive the certified lower bound:
+\begin{enumerate}
+    \item \textbf{First excited-state floor:} Evaluating Eq.~\eqref{eq:componentwise-floor} for $k=1$ yields:
+    \begin{equation}
+E_1(s) \ge \max\{(1-s)E_1(H_I), sE_1(H_P)\} = \max\{2(1-s), 2s\}
+\end{equation}
+    \item \textbf{Ground-state variational ceiling:} Evaluating Eq.~\eqref{eq:certified-gap-bound} using the trial state $|\psi_I\rangle = |+\rangle$ yields:
+    \begin{equation}
+E_0(s) \le (1-s)E_0(H_I) + s\langle + | H_P | + \rangle = 0 + s \left[\frac{1}{2}\begin{pmatrix}1 & 1\end{pmatrix}\begin{pmatrix}0 & 0 \\ 0 & 2\end{pmatrix}\begin{pmatrix}1 \\ 1\end{pmatrix}\right] = s
+\end{equation}
+\end{enumerate}
+Subtracting these two expressions gives the certified gap lower bound $\Delta_{\mathrm{cert}}(s)$:
+\begin{equation}
+\Delta(s) \ge \max\{2(1-s), 2s\} - s = \begin{cases} 2 - 3s & \text{if } s \le \frac{1}{2} \\ s & \text{if } s \ge \frac{1}{2} \end{cases}
+\end{equation}
+
+At the true minimum point $s = 1/2$, the exact gap is $\Delta_{\mathrm{exact}}(1/2) = \sqrt{2} \approx 1.414$, while our certificate yields $\Delta_{\mathrm{cert}}(1/2) = 0.5$. This certifies that $\Delta(s)$ remains strictly positive ($\ge 0.5$) across the entire path, successfully bounding the gap away from zero using only boundary spectral data and a single variational expectation value.
+
+\subsection{Example: Catalytic Level-Lifting (Proposition~\ref{prop:psd-catalysts})}
+Consider an unperturbed two-level Hamiltonian path whose eigenvalues cross perfectly at $s = 1/2$, causing the unperturbed gap to close completely:
+\begin{equation}
+H(s) = (1-s)\begin{pmatrix} 0 & 0 \\ 0 & 2 \end{pmatrix} + s\begin{pmatrix} 2 & 0 \\ 0 & 0 \end{pmatrix} = \begin{pmatrix} 2s & 0 \\ 0 & 2(1-s) \end{pmatrix}
+\end{equation}
+The ordered eigenvalues are $E_0(s) = \min\{2s, 2(1-s)\}$ and $E_1(s) = \max\{2s, 2(1-s)\}$. At $s=1/2$, $E_0(1/2) = E_1(1/2) = 1$, yielding $\Delta(1/2) = 0$.
+
+We introduce a positive-semidefinite catalyst $H_C \ge 0$ modulated by a standard non-negative scheduling function $f(s) = g s(1-s)$, where $g > 0$ is a coupling constant:
+\begin{equation}
+H_C = \begin{pmatrix} 1 & 1 \\ 1 & 1 \end{pmatrix} = 2|+\rangle\langle+|, \quad H_{\mathrm{cat}}(s) = H(s) + gs(1-s)H_C
+\end{equation}
+Evaluating the catalyzed system at the critical midpoint $s = 1/2$ yields:
+\begin{equation}
+H_{\mathrm{cat}}(1/2) = \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix} + \frac{g}{4}\begin{pmatrix} 1 & 1 \\ 1 & 1 \end{pmatrix} = \begin{pmatrix} 1 + \frac{g}{4} & \frac{g}{4} \\ \frac{g}{4} & 1 + \frac{g}{4} \end{pmatrix}
+\end{equation}
+The exact eigenvalues of this catalyzed midpoint matrix are:
+\begin{equation}
+E_0^{\mathrm{cat}}(1/2) = 1, \quad E_1^{\mathrm{cat}}(1/2) = 1 + \frac{g}{2}
+\end{equation}
+Comparing this to the unperturbed eigenvalues directly verifies Proposition~\ref{prop:psd-catalysts}:
+\begin{equation}
+E_0^{\mathrm{cat}}(1/2) = 1 \ge E_0(1/2) = 1, \quad E_1^{\mathrm{cat}}(1/2) = 1 + \frac{g}{2} \ge E_1(1/2) = 1
+\end{equation}
+This demonstrates the exact physical utility of the proposition: the positive-semidefinite catalyst lifts the first excited state by $g/2$, effectively opening the spectral gap ($\Delta_{\mathrm{cat}}(1/2) = g/2 > 0$) while guaranteeing that no energy level drops below its unperturbed benchmark.
+
+In this particular two-level example, the chosen PSD off-diagonal catalyst opens the midpoint crossing. Proposition 5.8 itself proves only componentwise level lifting, not gap amplification.
+
+
+\subsection{Example: Constraint Penalty Monotonicity (Proposition~\ref{prop:constraint-penalties})}
+We model a simple optimization task where the computational basis state $|0\rangle$ is feasible and $|1\rangle$ violates a structural constraint. We define the cost and constraint operators as:
+\begin{equation}
+H_{\mathrm{cost}} = -|0\rangle\langle0| = \begin{pmatrix} -1 & 0 \\ 0 & 0 \end{pmatrix}, \quad H_{\mathrm{constraints}} = |1\rangle\langle1| = \begin{pmatrix} 0 & 0 \\ 0 & 1 \end{pmatrix} \ge 0
+\end{equation}
+Using $H_I = -\sigma_x$, the unconstrained path $H_{\mathrm{unc}}(s)$ and the fully penalized path $H(s)$ are written as:
+\begin{equation}
+H_{\mathrm{unc}}(s) = (1-s)\begin{pmatrix} 0 & -1 \\ -1 & 0 \end{pmatrix} + s\begin{pmatrix} -1 & 0 \\ 0 & 0 \end{pmatrix} = \begin{pmatrix} -s & -(1-s) \\ -(1-s) & 0 \end{pmatrix}
+\end{equation}
+\begin{equation}
+H(s) = H_{\mathrm{unc}}(s) + s\gamma H_{\mathrm{constraints}} = \begin{pmatrix} -s & -(1-s) \\ -(1-s) & s\gamma \end{pmatrix}
+\end{equation}
+
+To see the monotonic lifting effect explicitly at the end of the adiabatic path ($s=1$):
+\begin{equation}
+\spec\big(H_{\mathrm{unc}}(1)\big) = \{-1, 0\}, \quad \spec\big(H(1)\big) = \{-1, \gamma\}
+\end{equation}
+Sorting these eigenvalues in increasing order ($k=1,2$) directly confirms Proposition~\ref{prop:constraint-penalties}:
+\begin{align*}
+    \lambda_1\big(H(1)\big) = -1 &\ge \lambda_1\big(H_{\mathrm{unc}}(1)\big) = -1 \quad \text{(Feasible ground state remains anchored)} \\
+    \lambda_2\big(H(1)\big) = \gamma &\ge \lambda_2\big(H_{\mathrm{unc}}(1)\big) = 0 \quad \text{(Infeasible state driven upward by } \gamma\text{)}
+\end{align*}
+This confirms that the positive-semidefinite constraint matrix acts as an index-by-index barrier. Increasing $\gamma \to \infty$ separates invalid configurations from the low-lying active spectrum without pushing infeasible states downward toward the target ground state.
+
+
+\section{Lower Bounding Spectral Gaps via the \texorpdfstring{$T_1^n$}{T1n} Horn Inequalities}
+
+\subsection{Full Horn Theory and the \texorpdfstring{$T_1^n$}{T1n} Restriction}
+
+In the previous section, we used Weyl's Inequality to study lower bounds for the spectral gap $\Delta(s)$ of an adiabatic process 
+\begin{equation}
+H(s) = (1-s)H_I + sH_P, \quad s\in[0,1]
+\end{equation}
+with respect to the eigenvalues of $H_I$ and $H_P$. In this section, we present a refined approach based only on the $T_1^n$ subfamily of Horn's generalization of Weyl's Inequality. We first recall the full theorem to fix notation, but all AQC certificates below use only $T_1^n$, not the higher-order families. In particular, let $A,B$ be $n \times n$ Hermitian matrices. The following result, stated in the notation of \cite{johnston2025limitinghorninequalities}, holds: 
+
+\begin{theorem}[Klyachko--Knutson--Tao]
+ For any $\alpha, \beta, \gamma \in \mathbb{R}^n$ with coordinates listed in non-increasing order, the following are equivalent:
+ \begin{enumerate}
+  \item There exist $n \times n$ Hermitian matrices $A$ and $B$ such that ( $A, B, A+B$ ) have respective spectra $(\alpha, \beta, \gamma)$.
+  \item $\sum_{i=1}^n \alpha_i+\sum_{j=1}^n \beta_j=\sum_{k=1}^n \gamma_k$, and the inequalities
+  \begin{equation}
+  \sum_{i \in I} \alpha_i+\sum_{j \in J} \beta_j \ge \sum_{k \in K} \gamma_k
+  \end{equation}
+ \end{enumerate}
+hold for all triples $(I, J, K) \in T_r^n$ for all $1 \le r \le n-1$.
+\end{theorem}
+
+\begin{proof}
+  This theorem has a long history and the stepping stones of the proof of this theorem were first presented in \cite{MR1654578} and then subsequently finished in \cite{MR1671451}.
+\end{proof}
+
+\begin{remark}
+  The collections $T_r^n$ indexing the Horn inequalities are constructed recursively. One starts by defining $T_1^n=\{(\{i\},\{j\},\{k\}) \mid 1 \le i, j, k \le n, i+j=k+1\}$. Next, given a subset $I=\left\{i_1<\ldots<i_r\right\}$ of $\{1, \ldots, n\}$, let $\lambda(I) \in \mathbb{R}^r$ be the vector $\lambda(I)=\left(i_r-r, \ldots, i_1-1\right)$. Then for $r \ge 2$, the triples of subsets ( $I, J, K$ ) belonging to $T_r^n$ - that is, the triples that correspond to Horn inequalities - are precisely those for which $(\lambda(I), \lambda(J), \lambda(K))$ solves the Horn inequalities indexed by $T_p^r$ for $1 \le p \le r-1$.
+\end{remark}
+
+\begin{remark}
+  The inequalities represented by this theorem are usually called Horn inequalities, after Horn's original conjecture. In what follows, however, we deliberately use only the first-level family $T_1^n$; no higher-order Horn inequalities are invoked in the AQC applications.
+\end{remark}
+
+To connect Horn's theorem with spectral-gap estimates, we now specialize to the simplest family, namely the triples in $T_1^n$. This restriction is essential for the scope of the paper: the following certificate uses only individual-eigenvalue inequalities and not the full recursive Horn system.
+
+\subsection{Application to AQC: Bounding Local Gap Fluctuations with \texorpdfstring{$T_1^n$}{T1n} Horn Inequalities}
+
+\begin{proposition}[$T_1^n$ Horn Gap Certificate]
+Let $A,B\in \Herm(n)$ and let $C=A+B$. Write the spectra of $A$, $B$, and $C$ in non-increasing order as
+\begin{equation}
+\alpha_1\ge \alpha_2\ge \cdots \ge \alpha_n,
+\qquad
+\beta_1\ge \beta_2\ge \cdots \ge \beta_n,
+\qquad
+\gamma_1\ge \gamma_2\ge \cdots \ge \gamma_n.
+\end{equation}
+With this ordering, define the spectral gap of $C$ by
+\begin{equation}
+\Delta(C)=\gamma_{n-1}-\gamma_n.
+\end{equation}
+Then the $T_1^n$ Horn inequalities imply
+\begin{equation}
+\Delta(C)
+\ge
+\max\{\alpha_n+\beta_{n-1},\alpha_{n-1}+\beta_n\}
+-
+\min_{1\le i\le n}\{\alpha_i+\beta_{n+1-i}\}.
+\end{equation}
+In particular, if the right-hand side is positive, then the $T_1^n$ Horn inequalities certify that the gap of $C$ is open.
+\end{proposition}
+
+\begin{proof}
+For triples in $T_1^n$, the indexing condition is
+\begin{equation}
+i+j=k+1.
+\end{equation}
+These inequalities involve individual eigenvalues rather than sums of several eigenvalues.
+
+First choose $k=n$. Then the indexing condition gives $i+j=n+1$, so $j=n+1-i$. The $T_1^n$ Horn inequality yields
+\begin{equation}
+\gamma_n\le \alpha_i+\beta_{n+1-i},
+\qquad i=1,\ldots,n.
+\end{equation}
+Taking the minimum over all admissible $i$ gives the sharpest upper bound on the ground-state energy obtainable from this $T_1^n$ family:
+\begin{equation}
+\gamma_n\le U_0:=\min_{1\le i\le n}\{\alpha_i+\beta_{n+1-i}\}.
+\end{equation}
+
+It remains to lower-bound the first excited energy $\gamma_{n-1}$. Apply the same $T_1^n$ Horn inequalities to the sign-flipped matrices $-A$, $-B$, and $-C$. Their spectra, still written in non-increasing order, are
+\begin{equation}
+\widehat{\alpha}_i=-\alpha_{n+1-i},
+\qquad
+\widehat{\beta}_i=-\beta_{n+1-i},
+\qquad
+\widehat{\gamma}_i=-\gamma_{n+1-i}.
+\end{equation}
+The eigenvalue $\gamma_{n-1}$ corresponds to $\widehat{\gamma}_2=-\gamma_{n-1}$. Setting $k=2$ in the $T_1^n$ condition gives the two admissible choices $(i,j)=(1,2)$ and $(i,j)=(2,1)$. Hence
+\begin{equation}
+\widehat{\gamma}_2\le \widehat{\alpha}_1+\widehat{\beta}_2,
+\qquad
+\widehat{\gamma}_2\le \widehat{\alpha}_2+\widehat{\beta}_1.
+\end{equation}
+Undoing the sign flip gives
+\begin{equation}
+\gamma_{n-1}\ge \alpha_n+\beta_{n-1},
+\qquad
+\gamma_{n-1}\ge \alpha_{n-1}+\beta_n.
+\end{equation}
+Therefore
+\begin{equation}
+\gamma_{n-1}\ge L_1:=\max\{\alpha_n+\beta_{n-1},\alpha_{n-1}+\beta_n\}.
+\end{equation}
+Combining this lower bound on $\gamma_{n-1}$ with the upper bound on $\gamma_n$ gives
+\begin{equation}
+\Delta(C)=\gamma_{n-1}-\gamma_n
+\ge
+L_1-U_0.
+\end{equation}
+Substituting the definitions of $L_1$ and $U_0$ yields
+\begin{equation}
+\Delta(C)
+\ge
+\max\{\alpha_n+\beta_{n-1},\alpha_{n-1}+\beta_n\}
+-
+\min_{1\le i\le n}\{\alpha_i+\beta_{n+1-i}\}.
+\end{equation}
+If this lower bound is positive, then $\Delta(C)>0$, so the gap is certified to be open. If it is nonpositive, the inequality remains valid but does not prove a nonzero gap.
+\end{proof}
+
+This proposition mirrors the role of Weyl's Inequality in the previous section: the $T_1^n$ Horn inequalities provide a different eigenvalue-profile certificate, not a uniformly stronger replacement for Weyl estimates. The resulting lower bound is still a certificate rather than an exact value of the spectral gap.
+
+\subsection{Example: \texorpdfstring{$T_1^n$}{T1n} Horn Inequalities in AQC}
+
+
+We now apply the preceding $T_1^n$ Horn certificate to the same one-qubit interpolation used in the Weyl example. Recall that
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad
+H_I=-\sigma_x,
+\qquad
+H_P=-\sigma_z.
+\end{equation}
+Set
+\begin{equation}
+A=(1-s)H_I,
+\qquad
+B=sH_P,
+\qquad
+C=H(s)=A+B.
+\end{equation}
+The spectra of $A$ and $B$, written in non-increasing order, are
+\begin{equation}
+\alpha_1=1-s,
+\qquad
+\alpha_2=-(1-s),
+\end{equation}
+ and
+\begin{equation}
+\beta_1=s,
+\qquad
+\beta_2=-s.
+\end{equation}
+Since this is a two-dimensional example, $n=2$, and the $T_1^n$ Horn gap certificate derived above becomes
+\begin{equation}
+\Delta(C)
+\ge
+\max\{\alpha_2+\beta_1,\alpha_1+\beta_2\}
+-
+\min\{\alpha_1+\beta_2,\alpha_2+\beta_1\}.
+\end{equation}
+Substituting the eigenvalues gives
+\begin{align}
+\alpha_2+\beta_1&=-(1-s)+s=2s-1,\\
+\alpha_1+\beta_2&=(1-s)-s=1-2s.
+\end{align}
+Therefore the $T_1^2$ Horn inequalities certify
+\begin{equation}
+\Delta(H(s))
+\ge
+\max\{2s-1,1-2s\}-\min\{2s-1,1-2s\}
+=2|1-2s|.
+\end{equation}
+This should be compared with the exact gap computed earlier,
+\begin{equation}
+\Delta_{\mathrm{exact}}(s)=2\sqrt{s^2+(1-s)^2}.
+\end{equation}
+The $T_1^2$ Horn bound is always valid, since
+\begin{equation}
+2|1-2s|\le 2\sqrt{s^2+(1-s)^2},
+\end{equation}
+but it becomes zero at $s=1/2$, precisely where the true gap is
+\begin{equation}
+\Delta_{\mathrm{exact}}(1/2)=\sqrt{2}.
+\end{equation}
+Thus, in this example, the $T_1^2$ Horn inequalities agree with the qualitative lesson of the Weyl analysis from the previous section: eigenvalue-only bounds give rigorous certificates, but they need not capture the avoided crossing sharply. The Weyl estimate used the perturbation norm and gave a positive lower bound at $s=1/2$, namely $2-\sqrt{2}$, while this elementary $T_1^2$ Horn certificate gives $0$ at the same point. This does not contradict the exact calculation; rather, it shows that this particular Horn subfamily uses only endpoint spectral data of $A$ and $B$ and does not see the eigenvector geometry responsible for opening the avoided crossing. Higher-order Horn inequalities may give additional constraints in higher-dimensional settings, but they are outside the scope of the present paper. The conclusion for the restricted family remains the same: the $T_1^n$ inequalities provide guaranteed lower bounds, not exact gap values, and they need not dominate Weyl estimates.
+
+\subsection{Example: \texorpdfstring{$T_1^n$}{T1n} Horn Inequalities for Rank-One Perturbations}
+
+The previous one-qubit example showed that the $T_1^n$ Horn inequalities, like Weyl's Inequality, should be understood as certificates rather than exact gap formulae. However, even this restricted Horn family records useful structural information when the perturbation has strong spectral structure. This is precisely the situation in many AQC Hamiltonians, where a local defect, oracle term, or marked-state penalty acts nontrivially on only a very small part of the full Hilbert space.
+
+To illustrate this point, let $d=2^N$ and consider a reference Hamiltonian $A$ with non-increasing eigenvalues
+\begin{equation}
+\alpha_1\ge \alpha_2\ge \cdots \ge \alpha_d.
+\end{equation}
+Now perturb it by a negative rank-one projector
+\begin{equation}
+B=-s\ket{m}\bra{m},
+\qquad s\ge 0,
+\end{equation}
+where $\ket{m}$ is a normalized marked state. This type of term is a simplified model for a localized oracle. Its spectrum is highly structured:
+\begin{equation}
+\beta_1=\beta_2=\cdots=\beta_{d-1}=0,
+\qquad
+\beta_d=-s.
+\end{equation}
+Let
+\begin{equation}
+C=A+B,
+\qquad
+\gamma_1\ge \gamma_2\ge \cdots \ge \gamma_d
+\end{equation}
+be the spectrum of the perturbed Hamiltonian.
+
+From the Weyl point of view, the only relevant quantity is
+\begin{equation}
+\norm{B}_2=s.
+\end{equation}
+Thus Weyl's stability estimate gives the uniform drift bound
+\begin{equation}
+\alpha_k-s\le \gamma_k\le \alpha_k,
+\qquad k=1,\dots,d,
+\end{equation}
+where the upper bound uses that $B$ is negative semidefinite.
+
+The restricted $T_1^d$ Horn inequalities record different information from the norm bound because they use the perturbation spectrum $(0,\dots,0,-s)$. Applying these $T_1^d$ inequalities to $C=A+B$ gives, for $k=1,\dots,d-1$,
+\begin{equation}
+\gamma_k\le \alpha_k.
+\end{equation}
+Applying the same inequalities to the sign-flipped triple $(-A,-B,-C)$ gives the complementary lower bounds
+\begin{equation}
+\gamma_k\ge \alpha_{k+1},
+\qquad k=1,\dots,d-1.
+\end{equation}
+Consequently, the $T_1^d$ Horn inequalities imply the interlacing pattern
+\begin{equation}
+\alpha_1\ge \gamma_1\ge \alpha_2\ge \gamma_2\ge \cdots \ge \alpha_{d-1}\ge \gamma_{d-1}\ge \alpha_d.
+\end{equation}
+This is algebraic interlacing information, whereas the basic Weyl norm bound provides uniform drift control. Rather than replacing Weyl's estimate, the $T_1^d$ Horn inequalities add a different constraint: each $\gamma_k$ remains trapped between two consecutive eigenvalues of the unperturbed operator $A$.
+
+This distinction is important for spectral-gap estimates. Weyl gives the scale-dependent but structure-blind lower estimate
+\begin{equation}
+\gamma_{d-1}-\gamma_d\ge (\alpha_{d-1}-s)-\alpha_d,
+\end{equation}
+which may become useless when $s$ is larger than the local unperturbed gap. The $T_1^d$ Horn inequalities, on the other hand, show that the first excited level satisfies
+\begin{equation}
+\gamma_{d-1}\ge \alpha_d,
+\end{equation}
+independently of the magnitude of $s$. The only level that can escape below the bottom of the original spectrum is the new ground-state branch $\gamma_d$. This is exactly the kind of algebraic behavior expected from a rank-one localized perturbation: most of the spectrum interlaces with the original spectrum, rather than drifting uniformly.
+
+
+\subsection{A Many-Qubit AQC Search Example}
+
+The preceding rank-one discussion can be specialized to a more explicitly AQC setting: unstructured database search on $N$ qubits. In this case the Hilbert space dimension is
+\begin{equation}
+d=2^N.
+\end{equation}
+Let
+\begin{equation}
+\ket{+}=\frac{1}{\sqrt{d}}\sum_{x=0}^{d-1}\ket{x}
+\end{equation}
+be the uniform superposition state, and let $\ket{m}$ denote the marked computational-basis state. Consider the standard projector Hamiltonians
+\begin{equation}
+H_I=I-\ket{+}\bra{+},
+\qquad
+H_P=I-\ket{m}\bra{m}.
+\end{equation}
+The affine interpolation is
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1].
+\end{equation}
+It can be written as a sum
+\begin{equation}
+H(s)=A+B,
+\end{equation}
+where
+\begin{equation}
+A=I-(1-s)\ket{+}\bra{+},
+\qquad
+B=-s\ket{m}\bra{m}.
+\end{equation}
+Thus the marked-state term is exactly the negative rank-one perturbation considered above, now arising from a concrete many-qubit AQC search Hamiltonian.
+
+The eigenvalues of $A$ are immediate. The state $\ket{+}$ has eigenvalue $s$, while every vector orthogonal to $\ket{+}$ has eigenvalue $1$. Written in non-increasing order,
+\begin{equation}
+\alpha_1=\alpha_2=\cdots=\alpha_{d-1}=1,
+\qquad
+\alpha_d=s.
+\end{equation}
+Similarly, since $B$ is a negative rank-one projector scaled by $s$,
+\begin{equation}
+\beta_1=\beta_2=\cdots=\beta_{d-1}=0,
+\qquad
+\beta_d=-s.
+\end{equation}
+Let
+\begin{equation}
+\gamma_1\ge\gamma_2\ge\cdots\ge\gamma_d
+\end{equation}
+be the eigenvalues of $H(s)=A+B$ in non-increasing order.
+
+Applying the $T_1^d$ Horn interlacing conclusion for negative rank-one perturbations gives
+\begin{equation}
+\alpha_1\ge \gamma_1\ge \alpha_2\ge \gamma_2\ge\cdots\ge \alpha_{d-1}\ge \gamma_{d-1}\ge \alpha_d.
+\end{equation}
+Substituting the explicit spectrum of $A$ yields
+\begin{equation}
+1\ge \gamma_1\ge 1\ge \gamma_2\ge\cdots\ge 1\ge \gamma_{d-1}\ge s.
+\end{equation}
+Consequently,
+\begin{equation}
+\gamma_1=\gamma_2=\cdots=\gamma_{d-2}=1.
+\end{equation}
+Only the two lowest branches, $\gamma_{d-1}$ and $\gamma_d$, remain free to move nontrivially. The first excited level satisfies
+\begin{equation}
+1\ge \gamma_{d-1}\ge s,
+\end{equation}
+while the ground-state branch $\gamma_d$ is the branch that can detach below the original bottom level.
+
+This conclusion should be contrasted with what is obtained from Weyl's Inequality alone. The Weyl estimate compresses the perturbation into the single spectral norm
+\begin{equation}
+\norm{B}_2=s.
+\end{equation}
+Since $B\le 0$, Weyl's Inequality gives only the componentwise interval
+\begin{equation}
+\alpha_k-s\le \gamma_k\le \alpha_k,
+\qquad k=1,\dots,d.
+\end{equation}
+For the degenerate excited manifold of the search Hamiltonian, where $\alpha_1=\cdots=\alpha_{d-1}=1$, this becomes
+\begin{equation}
+1-s\le \gamma_k\le 1,
+\qquad k=1,\dots,d-1.
+\end{equation}
+Thus, as $s\to 1$, the Weyl certificate allows the entire excited manifold to drift downward toward the low-energy sector.
+
+\section{Computational Results}
+
+In this section, we empirically demonstrate the efficacy of our certification framework on finite-size Max-Cut instances of Erdös-Rényi graphs $G(n,p=0.5)$ where $n$ is the number of vertices and $p=0.5$ is the probability that two vertices have an edge connecting them. By applying both the Weyl-Lipschitz and the $T_1^n$ Horn bounds, we show how analytic certificates can be constructed and extended via an adaptive continuation algorithm. All numerical experiments were conducted on connected Erdős-Rényi random graphs with random edge weights.
+
+\subsection{Problem Formulation and Hamiltonians}
+To benchmark the certificates, we study the spectral gap along the linear adiabatic path $H(s) = (1 - s) H_I + s H_P$ for $s \in [0, 1]$. The initial Hamiltonian is given by a sum of Pauli-X operators acting on each active qubit:
+\begin{equation}
+H_I = \frac{1}{2} \sum_{i=1}^N (I - X_i).
+\end{equation}
+This is a positive-semidefinite (PSD) operator whose ground state energy is $E_0(H_I) = 0$ (corresponding to the symmetric state $\ket{+}^{\otimes N}$) and whose initial spectral gap is $\Delta(0) = 1$. The problem Hamiltonian encodes the Max-Cut cost function, heavily penalizing uncut edges:
+\begin{equation}
+H_P = \sum_{(i,j) \in E} w_{ij} \frac{I + Z_i Z_j}{2},
+\end{equation}
+where $E$ is the set of edges and $w_{ij}$ are the random edge weights. $H_P$ is also positive-semidefinite.
+
+\subsection{Endpoint-Only Certificates} We first evaluate the baseline performance of the Weyl and Horn methods without any intermediate information. Figure~\ref{fig:no_anchors} shows the exact spectral gap alongside the bounds derived solely from the spectra of the initial and final Hamiltonians ($H_I$ and $H_P$).
+
+\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{comparison_updated_N10_no_anchors.png} \caption{Empirical comparison of the Weyl and Horn lower bounds using only the endpoints $s=0$ and $s=1$ as anchors. The system is a random $N=10$ Max-Cut instance.} \label{fig:no_anchors} \end{figure}
+
+Remarkably, these methods can be seen as certifying that the spectral gap remains strictly positive within finite regions near the endpoints using \textit{only} boundary spectral data. The Weyl method provides a uniform Lipschitz cone, while the $T_1^n$ Horn inequalities leverage the explicit spectral profile of the unperturbed boundaries to trap the eigenvalues. While these endpoint-only certificates correctly bound the gap away from zero at the beginning and end of the schedule, they naturally fail to certify the gap near the midpoint where avoided crossings typically occur.
+
+\subsection{Increasing Certificability via Intermediate Anchors} To certify the entire adiabatic path, we introduce intermediate anchor points where the Hamiltonian is explicitly diagonalized. Figure~\ref{fig:with_anchors} illustrates how providing a finite budget of intermediate anchors dramatically increases the certificability.
+
+\begin{figure}[htbp] \centering \includegraphics[width=0.92\textwidth]{comparison_updated_N10_anchors.png} \caption{Improvement of the Weyl and Horn certificates given an increasing budget of intermediate anchors ($5$, $15$, and $25$). Both methods become more precise as the number of anchors increases.} \label{fig:with_anchors} \end{figure}
+
+As the number of anchors increases, both methods become progressively more precise, effectively "pinning" the lower bound to the exact gap curve. However, there is a fundamental difference in computational expense. The Weyl-Lipschitz method only requires evaluating the local spectral gap at each anchor. In practice, this can be done extremely efficiently using iterative Krylov subspace methods which only need to resolve the two lowest eigenvalues. In stark contrast, the $T_1^n$ Horn method intrinsically requires the \textit{full} spectrum of the Hamiltonian at each anchor to evaluate the interlacing inequalities. Consequently, the Horn method is computationally much more expensive and scales poorly for larger system sizes, making the Weyl-Lipschitz approach heavily favored for practical implementation.
+
+\subsection{Adaptive Certified Continuation}
+Building on the efficiency of the Weyl-Lipschitz bound, we showcase an iterative, hybrid continuation algorithm that formally certifies the spectral gap remains positive up to a target anchor verification threshold $\Delta_{\text{target}} > 0$. For a standard uniform equal-rigor grid, certifying that the gap never drops below zero requires a constant step size $h_{\text{uniform}} \le \frac{\Delta_{\text{target}}}{2 L}$, where $L = \|H_P - H_I\|_2$ is the Lipschitz constant of the path.
+
+Rather than diagonalizing the system over this fine, uniform grid, our method strategically inserts anchors only where necessary. At each anchor $s_k$, we compute the lowest eigenvalues yielding a certified local gap $\Delta_{\text{lo}}(s_k)$. To maintain $\Delta(s) \ge \Delta_{\text{target}}$ on the adjacent interval, the algorithm takes a dynamic step:
+\begin{equation}
+h_{\text{cert}} = \frac{\Delta_{\text{lo}}(s_k) - \Delta_{\text{target}}}{2 L},
+\end{equation}
+backed by a minimum step size $h_{\min} = h_{\text{uniform}}$ for regions where the gap is small.
+
+\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{efficiency_comparison.png} \caption{Efficiency comparison of the adaptive certified sweep versus a standard uniform grid approach. The adaptive method achieves rigorous certification with significantly fewer computationally expensive diagonalizations.} \label{fig:efficiency} \end{figure}
+
+\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{grid_density_vs_gap.png} \caption{Grid solve density versus the true spectral gap for $N=10$. The "rug plot" at the bottom illustrates where the adaptive algorithm dynamically chooses to place its solves.} \label{fig:grid_N10} \end{figure}
+
+Figures~\ref{fig:grid_N10}, \ref{fig:grid_N12}, and \ref{fig:grid_N14} illustrate this behavior across increasing problem sizes ($N=10$, $12$, and $14$ respectively). The "rug plots" along the bottom axis of each figure represent the locations of the anchor evaluations. The adaptive algorithm dynamically increases its sampling density near the avoided crossing where the gap is narrowest. Conversely, in regions where the gap is wide, the rigorous Lipschitz bound allows the algorithm to safely "jump" over large intervals without requiring costly matrix operations.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{grid_density_vs_gap_N12.png}
+\caption{Adaptive grid density for $N=12$.}
+\label{fig:grid_N12}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{grid_density_vs_gap_N14.png}
+\caption{Adaptive grid density for $N=14$. The concentration of anchors becomes more pronounced as the avoided crossing sharpens.}
+\label{fig:grid_N14}
+\end{figure}
+
+This adaptive placement stands in stark contrast to uniform grid methods, which must be calibrated to the narrowest feature of the gap and thereby drastically over-sample the trivial regions. As shown in Figure~\ref{fig:efficiency}, our rigorous certified method handles the varying degrees of efficiency gracefully. By integrating steps of size $h_{\text{cert}}$ over the large-gap regions and $h_{\min}$ over the window regions, the algorithm automatically optimizes the required number of eigenvalue computations.
+
+
+
+\section{Conclusions}
+
+In this paper, we have developed a rigorous, finite-dimensional Matrix Analysis framework for certifying lower bounds on the instantaneous spectral gap during adiabatic quantum computation. By moving away from continuous-time integrals and focusing on discrete spectral perturbation theory, we provided a suite of analytically checkable certificates:
+\begin{itemize}
+    \item \textbf{Weyl's Inequality} yields global, Lipschitz-continuous gap propagation, allowing us to strictly bound local gap fluctuations using only the spectral norm of the perturbation.
+    \item \textbf{Positive-semidefinite monotonicity} provides componentwise energy-floor certificates, demonstrating that PSD catalysts and constraint-penalty terms can rigorously lift energy levels relative to unperturbed paths.
+    \item \textbf{Restricted $T_1^n$ Horn inequalities} utilize the explicit spectral profile of the Hamiltonians to generate structural interlacing certificates, which are particularly powerful for low-rank and localized perturbations.
+\end{itemize}
+
+Beyond the theoretical framework, we empirically validated these tools on finite-size Max-Cut instances of Erdös-Rényi graphs. The computational results confirmed that boundary spectral data alone can certify strict gap positivity in regions near the endpoints of the adiabatic schedule. Furthermore, by harnessing the efficiency of the Weyl-Lipschitz bound, we introduced a hybrid adaptive continuation algorithm. This adaptive approach dynamically inserts intermediate anchors only where necessary, providing formal certification of the spectral gap across the entire adiabatic path while substantially minimizing the number of computationally expensive Hamiltonian diagonalizations required compared to standard uniform grid sweeps. 
+
+Ultimately, this framework provides robust analytic techniques to help researchers benchmark, design, and certify adiabatic paths, catalysts, and problem formulations for efficient quantum optimization.
+
+
+\section{Future Research}
+
+This section outlines several open questions suggested by the certification framework developed in this paper.
+
+\begin{enumerate}
+    \item \textbf{Higher-order Horn families.} This paper restricted its AQC application to the simplest $T_1^n$ family of Horn inequalities because these inequalities isolate individual eigenvalues and lead directly to spectral-gap certificates. However, the full Klyachko--Knutson--Tao theorem involves recursive families $T_r^n$ for $r\ge 2$, whose inequalities constrain sums of eigenvalues rather than single eigenvalues. A natural next question is whether those higher-order Horn inequalities can be used to bound collective spectral quantities, such as the density of states near the ground state or the cumulative gap between the ground state and the lowest $k$ excited states.
+
+    \item \textbf{Non-affine paths and quantum catalysts.} The present framework assumes the linear interpolation
+    \begin{equation}
+    H(s)=(1-s)H_I+sH_P.
+    \end{equation}
+    However, nonlinear scheduling functions and catalytic Hamiltonians require a corresponding extension of the analysis. It is therefore important to understand how Weyl- and restricted Horn-type certificates adapt to paths of the form
+    \begin{equation}
+    H(s)=a(s)H_I+b(s)H_P+c(s)H_C,
+    \end{equation}
+    where $H_C$ is a catalyst term and $a(s)$, $b(s)$, and $c(s)$ are scheduling functions. This would extend the present analysis from affine lines in $\Herm(d)$ to more general curves in the space of Hamiltonians.
+    \item \textbf{Higher-rank perturbations.} The higher-dimensional example considered in this paper focuses on a rank-one localized perturbation. A natural extension is to study perturbations of rank $r>1$, where several eigenvalue branches may detach from the original spectrum. The open question is whether the $T_1^n$ Horn inequalities can provide useful interlacing-type certificates for such higher-rank perturbations, and how these certificates depend on the rank and spectral profile of the perturbing Hamiltonian.
+
+    \item \textbf{Class-specific certificates for hard optimization problems.} The higher-dimensional rank-one example shows that the $T_1^n$ Horn inequalities can provide structural information different from Weyl's Inequality when the perturbation has localized or low-rank spectral structure. A natural next step is to apply these bounds to problem Hamiltonians $H_P$ arising from concrete combinatorial optimization problems, such as Max-Cut, 3-SAT, or Subset Sum. The goal would be to identify whether particular problem classes have spectral profiles that allow precomputed $T_1^n$ Horn certificates, and whether these certificates can prove non-closing gaps for structured families of instances.
+\end{enumerate}
+
+
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
