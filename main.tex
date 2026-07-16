@@ -760,22 +760,31 @@ h_k = \eta \frac{\Delta_{\mathrm{lo}}(s_k)}{2 L_{\mathrm{cert}}},
 \end{equation}
 where $\eta \in (0,1)$ is a safety parameter. If the computed step size falls below a resolution floor $h_{\mathrm{floor}}$, the step is overridden to $h_{\mathrm{floor}}$ and the interval is flagged as unresolved.
 
-\begin{tabbing}
-\quad \= \quad \= \quad \= \quad \= \kill
-\textbf{Algorithm 1: Adaptive Positivity continuation sweep} \\
-\textbf{Inputs:} Path operator $H(s)$, certified upper bound $L_{\mathrm{cert}}\ge L_H$, safety parameter $\eta\in(0,1)$, resolution floor $h_{\mathrm{floor}}$.
-\textbf{Outputs:} List of anchors $\mathcal{A} = \{(s_k, \Delta_{\mathrm{lo}}(s_k))\}$, list of unresolved intervals $\mathcal{U}$. \\
-1. Initialize $s \leftarrow 0.0$, $\mathcal{A} \leftarrow \emptyset$, $\mathcal{U} \leftarrow \emptyset$. \\
-2. \textbf{While} $s < 1.0$: \\
-3. \> Obtain an anchor quantity $\Delta_{\mathrm{lo}}(s)$; at Level 2 this is a conditional numerical estimate.
-4. \> Add $(s, \Delta_{\mathrm{lo}}(s))$ to $\mathcal{A}$. \\
-5. \> Set step size $h \leftarrow \eta \frac{\Delta_{\mathrm{lo}}(s)}{2 L_{\mathrm{cert}}}$. \\
-6. \> \textbf{If} $h < h_{\mathrm{floor}}$: \\
-7. \>\> Set $h \leftarrow h_{\mathrm{floor}}$. \\
-8. \>\> Add unresolved interval $[s, \min(1.0, s+h)]$ to $\mathcal{U}$. \\
-9. \> Update $s \leftarrow \min(1.0, s + h)$. \\
-10. \textbf{Return} $\mathcal{A}$, $\mathcal{U}$.
-\end{tabbing}
+\begin{center}
+\fbox{%
+\begin{minipage}{0.94\linewidth}
+\textbf{Algorithm 1: Adaptive positivity continuation sweep}
+
+\smallskip
+\textbf{Inputs:} Path operator $H(s)$; certified upper bound $L_{\mathrm{cert}}\ge L_H$; safety parameter $\eta\in(0,1)$; resolution floor $h_{\mathrm{floor}}$.
+
+\textbf{Outputs:} Anchors $\mathcal{A}=\{(s_k,\Delta_{\mathrm{lo}}(s_k))\}$ and unresolved intervals $\mathcal{U}$.
+
+\begin{enumerate}[label=\arabic*., leftmargin=2em, itemsep=0.35em, topsep=0.5em]
+    \item Initialize $s\leftarrow0$, $\mathcal{A}\leftarrow\emptyset$, and $\mathcal{U}\leftarrow\emptyset$.
+    \item \textbf{While} $s<1$:
+    \begin{enumerate}[label=\alph*., leftmargin=1.8em, itemsep=0.25em, topsep=0.25em]
+        \item Obtain $\Delta_{\mathrm{lo}}(s)$; at Level 2, this is a conditional numerical estimate.
+        \item Add $(s,\Delta_{\mathrm{lo}}(s))$ to $\mathcal{A}$.
+        \item Set $h\leftarrow\eta\Delta_{\mathrm{lo}}(s)/(2L_{\mathrm{cert}})$.
+        \item \textbf{If} $h<h_{\mathrm{floor}}$, set $h\leftarrow h_{\mathrm{floor}}$ and add $[s,\min(1,s+h)]$ to $\mathcal{U}$.
+        \item Update $s\leftarrow\min(1,s+h)$.
+    \end{enumerate}
+    \item \textbf{Return} $\mathcal{A}$ and $\mathcal{U}$.
+\end{enumerate}
+\end{minipage}%
+}
+\end{center}
 
 The step-size rule in Algorithm 1 guarantees the following:
 
