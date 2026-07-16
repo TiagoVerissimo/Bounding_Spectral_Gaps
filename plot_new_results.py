@@ -15,7 +15,7 @@ with open("section7_results.csv", "r") as f:
 
         parsed_row = {}
         for k, v in row.items():
-            if k in ["validated", "weylA_certified"]:
+            if k in ["validated", "weylA_certified", "connected"]:
                 parsed_row[k] = str(v).strip().lower() == "true"
             elif k in ["sector"]:
                 parsed_row[k] = str(v)
@@ -107,13 +107,13 @@ for N in sorted_Ns:
 yerr_hybrid = np.array([yerr_hybrid_lower, yerr_hybrid_upper])
 yerr_uniform = np.array([yerr_uniform_lower, yerr_uniform_upper])
 
-plt.bar(r1, medians_hybrid, yerr=yerr_hybrid, capsize=5, color="#3a86c8", width=bar_width, edgecolor="grey", label="Hybrid Certified Sweep (Alg 1)")
+plt.bar(r1, medians_hybrid, yerr=yerr_hybrid, capsize=5, color="#3a86c8", width=bar_width, edgecolor="grey", label="Adaptive continuation sweep")
 plt.bar(r2, medians_uniform, yerr=yerr_uniform, capsize=5, color="#f25c54", width=bar_width, edgecolor="grey", label="Uniform Workload Reference Grid")
 
 plt.xlabel("Qubits (N)", fontweight="bold", fontsize=11)
-plt.ylabel("Median Matrix Solves (Oracle Calls)", fontweight="bold", fontsize=11)
+plt.ylabel("Median sparse eigensolve calls", fontweight="bold", fontsize=11)
 plt.xticks([r + bar_width/2 for r in range(len(sorted_Ns))], [str(N) for N in sorted_Ns])
-plt.title("Solve-Count Workload: Adaptive vs. Uniform Grid", fontsize=13, fontweight="bold", pad=15)
+plt.title("Solve-count workload: adaptive versus fixed grid", fontsize=13, fontweight="bold", pad=15)
 plt.grid(True, linestyle=":", alpha=0.6)
 plt.legend(fontsize=10)
 plt.tight_layout()
@@ -127,7 +127,7 @@ plt.plot(means["N"], means["frac_floor"], "d-", color="#3a86c8", lw=2, label="PS
 
 
 plt.xlabel("Qubits (N)", fontweight="bold", fontsize=11)
-plt.ylabel("Fraction of Path Certified Positive", fontweight="bold", fontsize=11)
+plt.ylabel("Sampled fraction with positive conditional bound", fontweight="bold", fontsize=11)
 plt.xticks(means["N"])
 plt.ylim(0, 0.35)
 plt.title("Endpoint Certificate Path Coverage vs. System Size", fontsize=13, fontweight="bold", pad=15)

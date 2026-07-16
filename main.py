@@ -41,6 +41,43 @@ def er_graph(n, p, rng):
 
 
 
+def is_connected(n, edges):
+
+    """Return whether the undirected graph induced by ``edges`` is connected."""
+
+    if n == 0:
+
+        return True
+
+    adjacency = [[] for _ in range(n)]
+
+    for u, v, *_ in edges:
+
+        adjacency[u].append(v)
+
+        adjacency[v].append(u)
+
+    seen = {0}
+
+    frontier = [0]
+
+    while frontier:
+
+        vertex = frontier.pop()
+
+        for neighbor in adjacency[vertex]:
+
+            if neighbor not in seen:
+
+                seen.add(neighbor)
+
+                frontier.append(neighbor)
+
+    return len(seen) == n
+
+
+
+
 def pinned_cost_vector(N, edges):
 
     """c[x] = uncut edges; qubit q <-> vertex q+1; bit=0 <-> spin +1 (= pinned v0)."""
@@ -223,13 +260,15 @@ def lowest_two(Hop, v0=None, tol=1e-10):
 
 
 
-def path_lipschitz(pathop):
+def path_lipschitz(pathop, tol=1e-10):
+
+    """Ordinary floating-point estimate of ``||H_P-H_I||_2``."""
 
     D = pathop.D()
 
-    hi = eigsh(D, k=1, which='LA', tol=1e-8, return_eigenvectors=False)[0]
+    hi = eigsh(D, k=1, which='LA', tol=tol, return_eigenvectors=False)[0]
 
-    lo = eigsh(D, k=1, which='SA', tol=1e-8, return_eigenvectors=False)[0]
+    lo = eigsh(D, k=1, which='SA', tol=tol, return_eigenvectors=False)[0]
 
     return max(abs(hi), abs(lo))
 
@@ -257,7 +296,8 @@ def psd_floor_cert(s, E1I, E1P, ceilings):                      # Prop 5.6 + dic
 
 # ---------------- [7.3] Algorithm 1: hybrid certified continuation ----------
 
-def certified_sweep(pathop, L_cert, eta=0.9, h_floor=1e-6, tol=1e-10):
+def certified_sweep(pathop, L_cert, eta=0.9, h_floor=1e-6, tol=1e-10,
+                    max_anchors=None):
 
     s, v0 = 0.0, None
 
@@ -266,6 +306,10 @@ def certified_sweep(pathop, L_cert, eta=0.9, h_floor=1e-6, tol=1e-10):
     step_details = []
 
     while s < 1.0 - 1e-12:
+
+        if max_anchors is not None and len(records) >= max_anchors:
+
+            break
 
         vals, vecs, res = lowest_two(pathop.H(s), v0=v0, tol=tol)
 
@@ -473,7 +517,7 @@ def run_instance(N, p, seed, delta_target=0.25, validate=None):
 
         E0P, E1P = float(two[0]), float(two[1])
 
-        if E1P > E0P:
+        if is_connected(n, edges) and E1P > E0P:
 
             break
 
@@ -486,6 +530,8 @@ def run_instance(N, p, seed, delta_target=0.25, validate=None):
     W = sum(edge[2] for edge in edges) if len(edges) > 0 and len(edges[0]) > 2 else float(m)
 
     L_cert = float(W + n)                               # L_cert = W + n_v
+
+    L_psd = float(max(W, 2 * (n // 2)))
 
 
 
@@ -578,7 +624,8 @@ def run_instance(N, p, seed, delta_target=0.25, validate=None):
     frac_floor_poly = float(np.mean(certs['floor_poly'] > 0))
 
 
-    row = dict(N=N, m=m, seed=seed, L_exact=L, L_cert=L_cert,
+    row = dict(N=N, m=m, seed=seed, connected=True, W=W, L_exact=L,
+               L_cert=L_cert, L_psd=L_psd,
 
                dmin_est=float(gap_est.min()),
 
@@ -694,7 +741,12 @@ def run_instance(N, p, seed, delta_target=0.25, validate=None):
 
             'num_edges': int(m),
 
-            'graph_model': {'name': 'Erdos-Renyi', 'p': float(p), 'seed': int(seed)},
+            'graph_model': {
+                'name': 'Erdos-Renyi',
+                'p': float(p),
+                'seed': int(seed),
+                'connected': True
+            },
 
             'edge_list': edge_payload,
 
@@ -796,7 +848,7 @@ if __name__ == "__main__":
 
     first = True
 
-    for N in [10, 12, 14]:                          # extend to 24 on a workstation
+    for N in [10, 12]:
 
         print(f"Running N={N} with 20 seeds in parallel...")
 

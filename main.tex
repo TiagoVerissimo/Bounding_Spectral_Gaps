@@ -79,7 +79,7 @@
 \maketitle
 
 \begin{abstract}
-Estimating whether the instantaneous spectral gap remains positive is a basic verification problem in adiabatic quantum computing. We present a constructive continuation framework that propagates local gap lower bounds across affine Hamiltonian paths using Weyl eigenvalue perturbation estimates. Given a certified upper bound on the perturbation norm and certified lower bounds at a finite collection of anchor points, the method partitions the adiabatic path into intervals on which strict gap positivity is guaranteed and unresolved windows requiring additional spectral information. The continuation theorem is rigorous conditional on certified anchor lower bounds; the present implementation uses high-accuracy sparse eigensolves and residual diagnostics, and should therefore be interpreted as a numerical realization of the formal framework rather than a fully interval-verified implementation. We also discuss complementary positive-semidefinite monotonicity. A reference implementation is evaluated on symmetry-reduced weighted Max-Cut Hamiltonians, illustrating the construction of interval certificates and the computational cost introduced by conservative norm bounds and narrow-gap regions. The aim is not to optimize the number of spectral evaluations, but to provide an explicit and auditable procedure for finite-size gap-positivity verification.
+Estimating whether the instantaneous spectral gap remains positive is a basic verification problem in adiabatic quantum computing. We present a constructive continuation framework that propagates local gap lower bounds across affine Hamiltonian paths using Weyl eigenvalue perturbation estimates. Given a certified upper bound on the perturbation norm and certified lower bounds at a finite collection of anchor points, the method partitions the adiabatic path into intervals on which strict gap positivity is guaranteed and unresolved windows requiring additional spectral information. The continuation theorem is rigorous conditional on certified anchor lower bounds; the present implementation uses floating-point sparse eigensolves and residual diagnostics, and should therefore be interpreted as a numerical realization of the formal framework rather than a fully interval-verified implementation. We also discuss complementary positive-semidefinite monotonicity. A reference implementation is evaluated on symmetry-reduced weighted Max-Cut Hamiltonians, illustrating the construction of interval certificates and the computational cost introduced by conservative norm bounds and narrow-gap regions. The aim is not to optimize the number of spectral evaluations, but to provide an explicit and auditable procedure for finite-size gap-positivity verification.
 \end{abstract}
 
 \tableofcontents
@@ -116,7 +116,7 @@ As the system size $N$ (the number of qubits) increases, \(\Delta_{\min}\) often
 
 Several studies have sought to mitigate $\Delta_{\min}$ by choosing alternative heuristic paths from $H_I$ to a fixed $H_P$ and studying how $\Delta_{\min}$ varies; examples of such approaches are described in \cite{PhysRevResearch.5.043236}, \cite{hnzj-j7kt}, and \cite{farhi2000quantumcomputationadiabaticevolution}.
 
-This paper develops a formal matrix-analysis framework, together with a high-accuracy numerical realization, for propagating lower bounds on the spectral gap. The implemented contribution is the Weyl-based positivity continuation method; the positive-semidefinite results are complementary analytical observations and do not alter the step selection in Algorithm~1.
+This paper develops a formal matrix-analysis framework, together with a floating-point numerical realization, for propagating lower bounds on the spectral gap. The implemented contribution is the Weyl-based positivity continuation method; the positive-semidefinite results are complementary analytical observations and do not alter the step selection in Algorithm~1.
 
 To identify what can and cannot be established from finitely many numerical evaluations, this paper introduces an adaptive continuation algorithm that partitions the path into positivity-certified and unresolved intervals. The central matrix-analysis tool is the norm-based Weyl perturbation certificate: a global, coarse-grained method based on the classical inequalities of Hermann Weyl. It requires no structural assumptions on the perturbation operator and compresses its effect into spectral-norm estimates, yielding robust but conservative control of eigenvalue drift and local gap fluctuations.
 
@@ -637,7 +637,7 @@ Fix $s\in[0,1]$. Setting $A=(1-s)H_I+sH_{\mathrm{cost}}=H_{\mathrm{unc}}(s)$ and
 
 \section{Computational Results}
 
-In this section, we empirically demonstrate the Weyl--Lipschitz continuation framework on finite-size Max-Cut instances of Erd\H{o}s--R\'{e}nyi graphs $G(n,p=0.5)$, where $n$ is the number of vertices and $p=0.5$ is the probability that two vertices have an edge connecting them. We show how local analytic bounds can be constructed and extended via an adaptive continuation algorithm. All numerical experiments were conducted on connected Erd\H{o}s--R\'{e}nyi random graphs with random edge weights.
+In this section, we report floating-point experiments with the Weyl--Lipschitz continuation rule on finite-size weighted Erd\H{o}s--R\'{e}nyi Max-Cut instances with $p=0.5$. Each sampled graph is required to be connected and to have a nondegenerate reduced-sector problem-Hamiltonian ground state. The results illustrate the behavior of the implemented step rule; they do not constitute a verified numerical gap certificate.
 
 \subsection{Problem Formulation, Symmetry Sectors, and Hamiltonians}
 To benchmark the certificates, we study the spectral gap along the linear adiabatic path $H(s) = (1 - s) H_I + s H_P$ for $s \in [0, 1]$.
@@ -645,7 +645,7 @@ As written, the problem Hamiltonian encoding the Max-Cut cost function is invari
 
 To resolve this trivial degeneracy and enable meaningful gap certification across the entire schedule, we restrict our analysis to the even-parity sector of the Hilbert space. Both the physical driver Hamiltonian $H_I^{\mathrm{phys}}$ and the problem Hamiltonian $H_P^{\mathrm{phys}}$ commute with the global parity operator (spin-flip symmetry) $P = \prod_{i=1}^{n_v} X_i$, where $n_v$ is the number of graph vertices (physical qubits). Because $P^2 = I$, the Hilbert space decomposes into two orthogonal, invariant symmetry sectors: the even-parity sector $\mathcal{H}_+$ (eigenvalue $+1$) and the odd-parity sector $\mathcal{H}_-$ (eigenvalue $-1$). The physical driver ground state $\ket{+}^{\otimes n_v}$ belongs to the even sector $\mathcal{H}_+$. Since the Hamiltonian preserves this parity symmetry for all $s$, the AQC dynamics are entirely restricted to $\mathcal{H}_+$.
 
-Within $\mathcal{H}_+$, the effective dimension is $d_+ = 2^{n_v-1} = 2^N$, where $N = N_{\mathrm{eff}} = n_v - 1$ is the number of effective qubits. In the figures and tables, the labels $N \in \{10, 12, 14\}$ refer to these effective qubits $N$ (corresponding to graph vertices $n_v \in \{11, 13, 15\}$). We construct the symmetry-adapted basis by quotienting the physical configuration space $\{0,1\}^{n_v}$ by the global spin-flip symmetry (complementarity). By fixing the spin of the first vertex to $+1$ (i.e., bit value 0), each basis state of $\mathcal{H}_+$ is represented by an effective bit string $x \in \{0, 1\}^N$. For Erd\H{o}s--R\'{e}nyi graphs with random continuous weights, the maximum cut is unique almost surely, translating to a nondegenerate ground state of $H_P$ in the even-parity sector. The gap is therefore defined in this sector as $\Delta(s) = E_1(s) - E_0(s)$, where $E_0(s)$ and $E_1(s)$ are the two lowest eigenvalues of $H(s)$ restricted to $\mathcal{H}_+$.
+Within $\mathcal{H}_+$, the effective dimension is $d_+ = 2^{n_v-1} = 2^N$, where $N = N_{\mathrm{eff}} = n_v - 1$ is the number of effective qubits. In the figures and tables, the labels $N \in \{10,12\}$ refer to these effective qubits (corresponding to graph vertices $n_v \in \{11,13\}$). We construct the symmetry-adapted basis by quotienting the physical configuration space $\{0,1\}^{n_v}$ by the global spin-flip symmetry (complementarity). By fixing the spin of the first vertex to $+1$ (i.e., bit value 0), each basis state of $\mathcal{H}_+$ is represented by an effective bit string $x \in \{0, 1\}^N$. For Erd\H{o}s--R\'{e}nyi graphs with random continuous weights, the maximum cut is unique almost surely, translating to a nondegenerate ground state of $H_P$ in the even-parity sector. The gap is therefore defined in this sector as $\Delta(s) = E_1(s) - E_0(s)$, where $E_0(s)$ and $E_1(s)$ are the two lowest eigenvalues of $H(s)$ restricted to $\mathcal{H}_+$.
 
 The unreduced physical driver Hamiltonian is $H_I^{\mathrm{phys}} = \frac{1}{2} \sum_{i=1}^{n_v} (I - X_i)$. In the symmetry-adapted basis of $N = n_v - 1$ effective qubits, a single physical spin flip $X_i$ on the unpinned vertices corresponds to a single-qubit flip $X_i$ on the representative qubits, whereas a spin flip on the pinned vertex corresponds to a global complementation $\prod_{i=1}^N X_i$. Thus, the reduced driver Hamiltonian acting on the representative basis is:
 \begin{equation}
@@ -661,14 +661,14 @@ H_{P,+} = \sum_{j : (1,j) \in E} w_{1j} \frac{I + Z_{j-1}}{2} + \sum_{(i,j) \in 
 \end{equation}
 where $E$ is the set of edges and $w_{ij}$ are the random edge weights. In this representative qubit basis, physical spins are indexed relative to the pinned vertex 1. Both $H_{I,+}$ and $H_{P,+}$ are positive-semidefinite.
 
-\subsection{Endpoint-Only and Local Gap Certification (\texorpdfstring{$L_{\mathrm{cert}}$ vs. $L_{\mathrm{true}}$}{Lcert vs. Ltrue})}
+\subsection{Endpoint-Only and Local Gap Bounds}
 We first evaluate the Weyl endpoint certificate using only initial and final boundary information.
-Figure~\ref{fig:no_anchors} shows a high-accuracy numerical reference gap alongside the bounds derived solely from the spectra of the initial and final Hamiltonians ($H_I$ and $H_P$).
+Figure~\ref{fig:no_anchors} shows a sampled floating-point Ritz-gap curve alongside the Weyl envelope derived solely from endpoint data.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.88\textwidth]{comparison_updated_N10_no_anchors.png}
-\caption{Weyl endpoint lower bound using only the endpoints $s=0$ and $s=1$ as anchors. The system is a random $N=10$ Max-Cut instance (using seed $0$).}
+\caption{Weyl endpoint envelope for one connected weighted $N=10$ instance (seed $0$). The black curve is a sampled floating-point Ritz-gap reference, not a verified continuous-path gap.}
 \label{fig:no_anchors}
 \end{figure}
 
@@ -700,7 +700,7 @@ in the even-parity sector, one has
 \qquad
 \boxed{L_H\le L_{\mathrm{PSD}}:=\max\!\left\{W,2\left\lfloor\frac{n_v}{2}\right\rfloor\right\}.}
 \end{equation}
-Both bounds are analytic and auditable. The archived benchmark run used $L_{\mathrm{cert}}=L_{\mathrm{loose}}$; consequently, its solve counts must not be presented as results for the tighter PSD bound. Table~\ref{tab:norm_bounds} quantifies the conservatism using a high-accuracy numerical estimate of $L_H$ obtained from the extremal eigenvalues of $H_P-H_I$.
+Both bounds are analytic and auditable. The regenerated experiments use $L_{\mathrm{cert}}=L_{\mathrm{loose}}$; their solve counts therefore do not measure the benefit of the tighter PSD bound. Table~\ref{tab:norm_bounds} compares these analytic bounds with ordinary floating-point extremal-eigenvalue estimates of $L_H$.
 
 \begin{table}[htbp]
 \centering
@@ -712,10 +712,9 @@ $N$ & Estimated $L_H$ & $W+n_v$ & $L_{\mathrm{PSD}}$ & Loose/estimated & PSD/est
 \midrule
 10 & 21.73 & 37.57 & 26.57 & 1.74 & 1.23 \\
 12 & 32.16 & 51.04 & 38.04 & 1.60 & 1.19 \\
-14 & 45.33 & 67.24 & 52.24 & 1.49 & 1.15 \\
 \bottomrule
 \end{tabular}
-\caption{Ensemble means over 20 instances. ``Estimated'' denotes an ordinary floating-point extremal eigensolve and is not itself a verified bound. The archived continuation data use the loose column. Re-running with $L_{\mathrm{PSD}}$ is expected to increase accepted step lengths by the ratio $(W+n_v)/L_{\mathrm{PSD}}$, but no anchor-count reduction is claimed without a regenerated sweep.}
+\caption{Means over 20 connected instances at each displayed size. ``Estimated'' denotes an ordinary floating-point extremal eigensolve at tolerance $10^{-10}$ and is not a verified bound. The continuation runs use the loose analytic bound; the PSD column is reported only to show its smaller numerical scale.}
 \label{tab:norm_bounds}
 \end{table}
 
@@ -737,24 +736,24 @@ The ground-state residual $r_0$ is still recorded as a numerical diagnostic, but
 We use the following terminology throughout:
 \begin{description}
 \item[Level 1: formal propagation theorem.] The interval theorem is exact, conditional on exact or certified input bounds.
-\item[Level 2: high-accuracy numerical realization.] Anchor gaps are estimated using sparse eigensolves and residual diagnostics. Propagation is algebraically rigorous conditional on correct eigenvalue indexing and valid numerical anchor bounds.
+\item[Level 2: floating-point numerical realization.] Anchor gaps are estimated using sparse eigensolves and residual diagnostics. Propagation is algebraically rigorous conditional on correct eigenvalue indexing and valid numerical anchor bounds.
 \item[Level 3: fully verified numerical certificate.] Indexed anchor energies are enclosed using interval arithmetic, verified inertia counting, or another verified eigenvalue-enclosure method.
 \end{description}
 The experiments in this paper are Level 2 numerical realizations, not Level 3 certificates. No verified inertia calculation is performed. Selected $N=10$ reference data were compared against dense floating-point calculations on a 201-point grid; this is a post hoc numerical check rather than interval verification.
 
-Figure~\ref{fig:with_anchors} illustrates how providing a finite budget of intermediate anchors increases the certified coverage of the path.
+Figure~\ref{fig:with_anchors} illustrates how additional intermediate evaluations change the displayed conditional Weyl envelope for one instance.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.88\textwidth]{comparison_updated_N10_anchors.png}
-\caption{Improvement of the Weyl lower bound with increasing adaptive eigensolve budgets. The curves use $5$, $15$, and $25$ adaptive eigensolves beginning at $s=0$, together with the analytically known $s=1$ endpoint datum. These are illustrative budgeted envelopes, not completed positivity sweeps. The system is a random $N=10$ Max-Cut instance (seed $0$).}
+\caption{Budgeted conditional Weyl envelopes for one connected weighted $N=10$ instance (seed $0$). Each panel uses at most the stated number of sparse eigensolves plus exact endpoint data. The black curve is a sampled floating-point Ritz-gap reference.}
 \label{fig:with_anchors}
 \end{figure}
 
-As the number of anchors increases, the plotted Weyl lower bound tracks the numerical reference curve more closely. Weyl--Lipschitz propagation requires only the two lowest indexed eigenvalue bounds and an analytic norm bound. Sparse Krylov methods require matrix--vector products and avoid full $O(d^3)$ dense diagonalization; their practical cost depends on sparsity, convergence tolerance, spectral separation, and warm-start quality. We therefore make no linear-time complexity claim for the eigensolve.
+For this displayed instance, the envelopes change as intermediate evaluations are added. Weyl--Lipschitz propagation requires only two computed Ritz values, residual diagnostics, and an analytic norm bound at each anchor; the resulting Level-2 bounds remain conditional on eigenvalue indexing. Sparse Krylov methods require matrix--vector products and avoid full $O(d^3)$ dense diagonalization; their practical cost depends on sparsity, convergence tolerance, spectral separation, and warm-start quality. We therefore make no linear-time complexity claim for the eigensolve.
 
-\subsection{Adaptive Certified Continuation and Positivity Theorem}
-Using the Weyl--Lipschitz bound, we implement an adaptive continuation sweep that partitions $[0,1]$ into positivity-certified and unresolved intervals. The rule concentrates anchor evaluations in small-gap regions and uses fewer evaluations in wide-gap regions, although its total cost relative to any fixed uniform baseline is instance-dependent:
+\subsection{Adaptive Continuation and Conditional Positivity Theorem}
+Using the Weyl--Lipschitz bound, we implement an adaptive continuation sweep that records accepted and unresolved intervals. The formal positivity statement applies when the anchor lower bounds are independently valid. The rule concentrates anchor evaluations in small-gap regions and uses fewer evaluations in wide-gap regions, although its total cost relative to any fixed uniform baseline is instance-dependent:
 \begin{equation}
 h_k = \eta \frac{\Delta_{\mathrm{lo}}(s_k)}{2 L_{\mathrm{cert}}},
 \end{equation}
@@ -847,42 +846,36 @@ s_{k+1}-s_k\le\eta\frac{\Delta_{\mathrm{lo}}(s_k)}{2L_{\mathrm{cert}}}.
 \end{equation}
 This algebraic check does not independently establish the indexed anchor bounds.
 
-The included selected-run Level 2 JSON record contains $\theta_0,\theta_1,r_0,r_1$ at every anchor; solver tolerance, \texttt{which}, \texttt{ncv}, iteration policy, convergence status, and warm-start policy; the complete weighted edge list and its hash; the Hamiltonian and graph parameters; $W$, $n_v$, and the derivation of $L_{\mathrm{cert}}$; the eigenvalue-indexing status; unresolved intervals; and software and repository versions. The aggregate 60-instance CSV is a performance archive rather than a substitute for 60 independently verified per-anchor records. A Level 3 record must additionally contain or reference independently checkable indexed enclosures, such as verified inertia intervals. The selected JSON output is therefore a self-identifying Level 2 conditional diagnostic log and must not be interpreted as independently verifying its own floating-point anchor inputs. Steps below $h_{\mathrm{floor}}$ are flagged and recorded in the unresolved list $\mathcal U$.
+The selected-run Level 2 JSON record generated by the current source contains $\theta_0,\theta_1,r_0,r_1$ at every anchor; solver tolerance, \texttt{which}, \texttt{ncv}, iteration policy, convergence status, and warm-start policy; the complete weighted edge list and its hash; the Hamiltonian and graph parameters; $W$, $n_v$, and the derivation of $L_{\mathrm{cert}}$; the eigenvalue-indexing status; unresolved intervals; and software and repository versions. The aggregate 40-instance CSV supports the reported summary statistics but is not a substitute for per-anchor verified records. A Level 3 record must additionally contain or reference independently checkable indexed enclosures, such as verified inertia intervals. The selected JSON output is therefore a self-identifying Level 2 conditional diagnostic log and must not be interpreted as independently verifying its own floating-point anchor inputs. Steps below $h_{\mathrm{floor}}$ are flagged and recorded in the unresolved list $\mathcal U$.
 
-\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{efficiency_comparison.png} \caption{Solve-count comparison between the adaptive positivity sweep and the archived uniform workload-reference grid over 20 random instances per size (seeds 0--19). Bars show medians and error bars show the interquartile range; Table~\ref{tab:anchor_stats} separately reports means and population standard deviations. Performance is strongly instance-dependent: narrow-gap outliers make the adaptive mean larger at $N=12$. The two methods do not provide identical interval-wise guarantees, so this is a workload comparison rather than a speedup theorem.} \label{fig:efficiency} \end{figure}
+\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{efficiency_comparison.png} \caption{Sparse-eigensolve counts for the adaptive continuation sweep and a fixed-grid workload reference, over 20 connected instances at each displayed size (seeds 0--19). Bars show medians and error bars show interquartile ranges. The methods do not provide matched guarantees, so the figure reports workload rather than speedup.} \label{fig:efficiency} \end{figure}
 
-\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{grid_density_vs_gap.png} \caption{Anchor density versus the high-accuracy numerical reference gap for $N=10$, seed 0. The rug plot shows the selected anchor locations.} \label{fig:grid_N10} \end{figure}
+\begin{figure}[htbp] \centering \includegraphics[width=\textwidth]{grid_density_vs_gap.png} \caption{Adaptive and fixed-grid solve locations relative to a sampled floating-point Ritz-gap curve for the connected $N=10$, seed-0 instance. The plot visualizes placement only; it is not a verified gap plot.} \label{fig:grid_N10} \end{figure}
 
-Figures~\ref{fig:grid_N10}, \ref{fig:grid_N12}, and \ref{fig:grid_N14} illustrate this behavior for the seed-0 instances. The rug plots show that anchor density increases near small numerical reference gaps and decreases in wider-gap regions. Each anchor still requires a sparse eigensolve, whose cost depends on convergence as well as anchor count.
+Figures~\ref{fig:grid_N10} and \ref{fig:grid_N12} visualize the solve locations for the seed-0 instances. In these examples, adaptive locations are denser in portions of the sampled curve with smaller Ritz gaps. Each location still requires a sparse eigensolve, whose cost depends on convergence as well as call count.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{grid_density_vs_gap_N12.png}
-\caption{Adaptive grid density for $N=12$ (using seed $0$).}
+\caption{Adaptive and fixed-grid solve locations relative to a sampled floating-point Ritz-gap curve for the connected $N=12$, seed-0 instance.}
 \label{fig:grid_N12}
 \end{figure}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{grid_density_vs_gap_N14.png}
-\caption{Adaptive grid density for $N=14$ (using seed $0$). The concentration of anchors becomes more pronounced as the avoided crossing sharpens.}
-\label{fig:grid_N14}
-\end{figure}
 
-The adaptive and uniform constructions distribute evaluations differently. The adaptive rule concentrates work around small-gap regions, but the total solve count can be either smaller or larger than the chosen uniform reference grid. In particular, very narrow gaps can create substantial adaptive overhead.
+The adaptive and fixed-grid constructions distribute evaluations differently. In the regenerated sample, the adaptive call count can be smaller or larger than the selected fixed-grid workload; narrow sampled gaps can lead to many adaptive calls.
 
 \subsubsection{Experimental Specification and Setup}
 To validate the performance of Algorithm 1, we conduct numerical experiments under the following setup:
 \begin{itemize}
-    \item \textbf{Graph Generation:} We generate random Erd\H{o}s--R\'{e}nyi graphs $G(n, p=0.5)$ where $n = N + 1$ is the number of vertices, so that the even-parity sector of the $N+1$ physical qubits maps to an $N$-qubit space (dimension $2^N$). The edge weights $w_{ij}$ are chosen independently and uniformly at random from the continuous interval $[0.5, 1.5]$.
-    \item \textbf{Instance Filtering:} Instances are resampled until the problem Hamiltonian has a nondegenerate lowest energy in the reduced sector. The archived generator does not separately condition on graph connectivity.
-    \item \textbf{Eigensolvers and Parameters:} Numerical estimates use \texttt{scipy.sparse.linalg.eigsh} with $k=2$, \texttt{which='SA'}, tolerance $10^{-10}$, \texttt{ncv}$=\min(d_+-1,50)$, SciPy's default maximum-iteration policy, and the previous ground-state Ritz vector as the next warm start. An ARPACK nonconvergence exception constitutes a failed run; no such flag is converted into an accepted anchor. The continuation uses $\eta=0.9$, $h_{\mathrm{floor}}=10^{-6}$, and the archived loose bound $L_{\mathrm{cert}}=W+n_v$. Algorithm~1 has no target-gap parameter. The value $\delta_{\mathrm{ref}}=0.25$ is used only to set the spacing of the auxiliary uniform reference grid.
+    \item \textbf{Graph Generation:} We generate weighted Erd\H{o}s--R\'{e}nyi graphs $G(n, p=0.5)$ with $n=N+1$ physical vertices, so the even-parity sector has dimension $2^N$. Edge weights are independent draws from $[0.5,1.5]$.
+    \item \textbf{Instance Filtering:} Instances are resampled until the graph is connected and the problem Hamiltonian has a nondegenerate lowest energy in the reduced sector.
+    \item \textbf{Eigensolvers and Parameters:} Anchor and norm estimates use \texttt{scipy.sparse.linalg.eigsh} with tolerance $10^{-10}$; anchors use $k=2$, \texttt{which='SA'}, \texttt{ncv}$=\min(d_+-1,50)$, SciPy's default maximum-iteration policy, and the previous ground-state Ritz vector as the next warm start. An ARPACK nonconvergence exception terminates the affected run. The continuation uses $\eta=0.9$, $h_{\mathrm{floor}}=10^{-6}$, and $L_{\mathrm{cert}}=W+n_v$. Algorithm~1 has no target-gap parameter. The auxiliary fixed-grid workload uses $\delta_{\mathrm{ref}}=0.25$.
     \item \textbf{Computational Hardware and Software:} The algorithm was implemented in Python 3.12.10 and executed on a standard desktop computer with an 12th Gen Intel(R)
 Core(TM) i5-1245U and 16 GB of RAM. Eigensolve wall-clock times are recorded as a secondary performance metric.
 \end{itemize}
 
 \subsubsection{Performance Statistics}
-Table~\ref{tab:anchor_stats} reports solve counts for Algorithm~1 and the archived uniform reference grid over 20 instances per size. Because the uniform grid is set by the auxiliary resolution parameter $\delta_{\mathrm{ref}}$ rather than by each instance's minimum gap, the columns are a computational comparison and not an equal-rigor comparison.
+Table~\ref{tab:anchor_stats} reports solve counts for Algorithm~1 and the fixed-grid workload reference over 20 regenerated connected instances per size. Because the uniform grid is set by the auxiliary resolution parameter $\delta_{\mathrm{ref}}$ rather than by each instance's minimum gap, the columns are a computational comparison and not an equal-rigor comparison.
 
 \begin{table}[htbp]
 \centering
@@ -890,16 +883,15 @@ Table~\ref{tab:anchor_stats} reports solve counts for Algorithm~1 and the archiv
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{ccccccc}
 \toprule
-$N$ & \multicolumn{2}{c}{Anchor Counts} & \multicolumn{4}{c}{Percentage Query Reduction} \\
+$N$ & \multicolumn{2}{c}{Sparse-eigensolve calls} & \multicolumn{4}{c}{Relative count change (\%)} \\
 \cmidrule(r){2-3} \cmidrule(r){4-7}
 & Uniform Grid & Adaptive Sweep & Mean $\pm$ SD & Min & Median & Max \\
 \midrule
 10 & $303.0 \,/\, 301.95 \pm 26.51$ & $199.5 \,/\, 256.00 \pm 164.88$ & $13.49\% \pm 58.40\%$ & $-134.49\%$ & $32.54\%$ & $69.97\%$ \\
 12 & $409.0 \,/\, 409.65 \pm 31.57$ & $349.0 \,/\, 704.60 \pm 1104.28$ & $-82.97\% \pm 307.49\%$ & $-1110.16\%$ & $13.92\%$ & $70.20\%$ \\
-14 & $531.0 \,/\, 539.35 \pm 35.04$ & $433.0 \,/\, 473.15 \pm 275.39$ & $11.48\% \pm 54.00\%$ & $-204.26\%$ & $20.07\%$ & $55.77\%$ \\
 \bottomrule
 \end{tabular}
-\caption{Archived solve-count comparison over 20 weighted Erd\H{o}s--R\'{e}nyi instances per size, with $\eta=0.9$, $h_{\mathrm{floor}}=10^{-6}$, $L_{\mathrm{cert}}=W+n_v$, and uniform-grid resolution parameter $\delta_{\mathrm{ref}}=0.25$. Counts are Median / Mean $\pm$ population SD. Negative percentages mean that the adaptive sweep used more solves.}
+\caption{Solve-count workload over 20 regenerated connected weighted Erd\H{o}s--R\'{e}nyi instances at each displayed size, with $\eta=0.9$, $h_{\mathrm{floor}}=10^{-6}$, $L_{\mathrm{cert}}=W+n_v$, and $\delta_{\mathrm{ref}}=0.25$. Counts are Median / Mean $\pm$ population SD. Negative relative changes mean that the adaptive sweep used more calls.}
 \label{tab:anchor_stats}
 \end{table}
 
@@ -912,22 +904,21 @@ $N$ & Full-path resolved & Mean unresolved intervals & Mean width & Maximum widt
 \midrule
 10 & $20/20$ & 0 & 0 & 0 \\
 12 & $19/20$ & 0.05 & $2.065\times10^{-5}$ & $4.13\times10^{-4}$ \\
-14 & $20/20$ & 0 & 0 & 0 \\
 \bottomrule
 \end{tabular}
-\caption{Unresolved-set statistics for the archived run. ``Full-path resolved'' means $\mathcal U=\varnothing$. The floor was activated for 413 consecutive $10^{-6}$ steps in the single unresolved $N=12$ run; the aggregate CSV stores these as one merged interval.}
+\caption{Unresolved-set statistics for the regenerated run. ``Full-path resolved'' means $\mathcal U=\varnothing$. The floor was activated for 413 consecutive $10^{-6}$ steps in the single unresolved $N=12$ run; the aggregate CSV stores these as one merged interval.}
 \label{tab:unresolved_stats}
 \end{table}
 
-The adaptive mean is skewed by rare outliers. For $N=12$, seed 13 has a minimum gap observed at its adaptive anchors of approximately $1.6\times10^{-5}$, uses 3513 solves, and produces the unresolved interval in Table~\ref{tab:unresolved_stats}. Seed 9 has a minimum adaptive-anchor gap of approximately $2.9\times10^{-3}$ and uses 4405 solves. These two values are diagnostics from the continuation trajectories, not minima from independent dense reference grids.
+The $N=12$ adaptive-call distribution is skewed by two instances with 3513 and 4405 calls. The 3513-call instance is the only run with a nonempty unresolved set. These are observed workload values from the continuation trajectories, not independently verified complexity measurements.
 
 The adaptive sweep responds to these crossings by taking small steps and, when a proposed step is below $h_{\mathrm{floor}}$, recording an unresolved interval. The uniform reference grid uses $h_{\mathrm{uniform}}=\delta_{\mathrm{ref}}/(2L_{\mathrm{cert}})$ only as a fixed workload baseline; it is not claimed to have equal interval-wise rigor.
 
-These data show instance-dependent behavior rather than a uniform speedup. The adaptive mean is lower for $N=10$ and $N=14$ but substantially higher, with large variance, for $N=12$. Medians are lower than the reference-grid medians at all three sizes, but narrow-gap outliers dominate some means. Post hoc comparison against a numerical reference curve is useful for detecting violations, but it is not the algorithm's formal success criterion; the relevant output is whether the unresolved set $\mathcal U$ is empty.
+These data show instance-dependent workload rather than a uniform speedup. In this sample, the adaptive median is below the fixed-grid median at both sizes, while the $N=12$ adaptive mean is larger because of outliers. The sampled reference curves are visual diagnostics, not the algorithm's formal success criterion; the reported unresolved set is the relevant Level-2 output.
 
-The norm bound directly controls the step length. For the archived ensembles, the mean loose values $W+n_v$ are 37.57, 51.04, and 67.24 for $N=10,12,14$, respectively; the smaller numbers 21.73, 32.16, and 45.33 are floating-point estimates of $L_H$, not certified constants. Table~\ref{tab:norm_bounds} shows that the tighter PSD bound substantially reduces this conservatism.
+The norm bound directly controls the step length. For the regenerated ensembles, the mean loose values $W+n_v$ are 37.57 and 51.04 for $N=10$ and $N=12$, respectively; the smaller values 21.73 and 32.16 are floating-point estimates of $L_H$, not certified constants. Table~\ref{tab:norm_bounds} shows that the tighter PSD bound substantially reduces this conservatism.
 
-Anchor density grows near narrow avoided crossings, but anchor count alone does not determine wall-clock cost because Krylov convergence also changes with spectral separation and warm-start quality. The present data do not establish a constant-factor query or wall-clock reduction.
+The displayed anchor locations are denser near portions of the sampled curves with smaller Ritz gaps. Anchor count alone does not determine wall-clock cost because Krylov convergence and warm-start quality also vary. The present data do not establish a query or wall-clock improvement guarantee.
 
 \subsection{Integral-Based Cost Model}
 Ignoring the final shortened interval, floor overrides, and integer rounding, the implemented rule suggests the continuum approximation
@@ -935,13 +926,13 @@ Ignoring the final shortened interval, floor overrides, and integer rounding, th
 \label{eq:integral_cost}
 N_{\mathrm{heuristic}}\approx\frac{2L_{\mathrm{cert}}}{\eta}\int_0^1\frac{\dd s}{\widetilde\Delta_{\mathrm{lo}}(s)},
 \end{equation}
-where $\widetilde\Delta_{\mathrm{lo}}$ is an interpolated numerical anchor-bound curve. If anchor error is negligible, replacing this curve by the numerical reference gap gives
+The present implementation does not evaluate this expression from an interpolated anchor-bound curve. For the selected diagnostic run only, it instead substitutes a sampled floating-point Ritz-gap curve, giving
 \begin{equation}
 N_{\mathrm{heuristic}}\approx\frac{2L_{\mathrm{cert}}}{\eta}\int_0^1\frac{\dd s}{\Delta(s)}.
 \end{equation}
 This is an idealized cost interpretation, not a complexity bound. It omits eigensolver enclosure error, floor overrides, the final shortened interval, and rounding. Moreover, prediction and observation are not statistically independent if both are generated from the same reference gap and step rule.
 
-The archived data contain a computed integral only for the validated $N=10$, seed-0 run: the model gives 115.92 and the sweep uses 116 anchor solves. The stale ensemble values previously reported for all three sizes have been removed. A meaningful ensemble test requires regenerating this quantity independently for all 60 instances, then reporting predicted-versus-observed correlation, mean absolute percentage error, and residuals versus the minimum numerical reference gap. Until that analysis is performed, the single close match is illustrative rather than a validation of the model.
+The regenerated data contain a computed integral only for the validated $N=10$, seed-0 run: the sampled-reference trapezoidal estimate gives 115.92 and the sweep uses 116 anchor solves. No ensemble integral analysis is reported. The single close match is illustrative rather than a validation of the model.
 
 \section{Conclusions}
 
@@ -951,9 +942,9 @@ In this paper, we have developed a rigorous, finite-dimensional Matrix Analysis 
     \item \textbf{Positive-semidefinite monotonicity} provides componentwise energy-floor certificates, demonstrating that PSD catalysts and constraint-penalty terms can rigorously lift energy levels relative to unperturbed paths.
 \end{itemize}
 
-For finite-size weighted Max-Cut instances, the Level 2 realization shows that endpoint data certify regions near the schedule boundaries and that intermediate anchors partition the remainder into positivity-accepted and unresolved intervals, conditional on the numerical anchor bounds. The experiments quantify how continuation cost depends on the integrated inverse gap, conservatism of the norm bound, and selected numerical resolution. Relative solve counts are strongly instance-dependent; no uniform speedup is claimed.
+For the regenerated finite-size weighted Max-Cut sample, the Level-2 realization produces conditional accepted and unresolved intervals from endpoint data and intermediate anchors. The experiments illustrate the sensitivity of the observed workload to anchor gaps, the chosen norm bound, and numerical resolution. Relative solve counts are instance-dependent; no speedup or complexity claim is made.
 
-The main outcome is therefore a transparent formal propagation method and an auditable high-accuracy numerical realization. Fully verified certification requires indexed interval eigenvalue enclosures at every anchor.
+The main outcome is therefore a transparent formal propagation method and an auditable floating-point numerical realization. Fully verified certification requires indexed interval eigenvalue enclosures at every anchor.
 
 \section{Accessibility of the Code and Data}
 

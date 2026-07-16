@@ -1,0 +1,62 @@
+{
+  "10": {
+    "instances": 20,
+    "all_connected": true,
+    "norms": {
+      "L_estimate_mean": 21.73277588381624,
+      "L_loose_mean": 37.567446240132064,
+      "L_psd_mean": 26.567446240132057,
+      "loose_over_estimate_mean": 1.7446672636695897,
+      "psd_over_estimate_mean": 1.2270020306236231
+    },
+    "solve_counts": {
+      "uniform_median": 303.0,
+      "uniform_mean": 301.95,
+      "uniform_population_sd": 26.507498938979513,
+      "adaptive_median": 199.5,
+      "adaptive_mean": 256.0,
+      "adaptive_population_sd": 164.88056283261528,
+      "relative_count_change_mean_percent": 13.491514027702772,
+      "relative_count_change_population_sd_percent": 58.39519642519798,
+      "relative_count_change_min_percent": -134.49477351916377,
+      "relative_count_change_median_percent": 32.53783947636124,
+      "relative_count_change_max_percent": 69.97084548104957
+    },
+    "unresolved": {
+      "full_path_resolved": 20,
+      "mean_components": 0.0,
+      "mean_width": 0.0,
+      "maximum_width": 0.0
+    }
+  },
+  "12": {
+    "instances": 20,
+    "all_connected": true,
+    "norms": {
+      "L_estimate_mean": 32.162578261593396,
+      "L_loose_mean": 51.0365112597073,
+      "L_psd_mean": 38.0365112597073,
+      "loose_over_estimate_mean": 1.5952810729105389,
+      "psd_over_estimate_mean": 1.1850485470986918
+    },
+    "solve_counts": {
+      "uniform_median": 409.0,
+      "uniform_mean": 409.65,
+      "uniform_population_sd": 31.57415873780329,
+      "adaptive_median": 349.0,
+      "adaptive_mean": 704.6,
+      "adaptive_population_sd": 1104.2837678785286,
+      "relative_count_change_mean_percent": -82.96830966363078,
+      "relative_count_change_population_sd_percent": 307.49096460765116,
+      "relative_count_change_min_percent": -1110.1648351648353,
+      "relative_count_change_median_percent": 13.915977783518471,
+      "relative_count_change_max_percent": 70.19704433497537
+    },
+    "unresolved": {
+      "full_path_resolved": 19,
+      "mean_components": 0.05,
+      "mean_width": 2.0650000000593804e-05,
+      "maximum_width": 0.0004130000000118761
+    }
+  }
+}
