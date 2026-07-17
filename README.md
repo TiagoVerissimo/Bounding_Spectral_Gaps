@@ -1,6 +1,6 @@
 # Bounding Spectral Gaps
 
-This repository contains the code and archived artifacts for the computational study in *Shift-Invariant Gap Continuation and Selected Replayable Level-3 Anchors*.
+This repository contains the code and archived artifacts for the computational study in *Shift-Invariant Spectral-Gap Continuation with Replayable Exact-Dyadic Certificates*.
 
 The Section 7 benchmark applies shift-invariant Weyl continuation to symmetry-reduced weighted Max-Cut Hamiltonians. Archived binary64 edge weights are interpreted as exact dyadic rationals. If `W_exact` is their exact rational sum, then `W_upper` is the least binary64 value satisfying `W_upper >= W_exact`, and
 
@@ -52,6 +52,12 @@ python -m pip install -r requirements.txt
 A TeX distribution with `latexmk` is required only for the manuscript build and is not installed by `requirements.txt`.
 
 Sparse ARPACK solves can differ slightly across SciPy, BLAS, CPU, and thread configurations. Graph and artifact identities are checked with exact SHA-256 values; endpoint nondegeneracy is checked with exact dyadic arithmetic and no floating tolerance; Level 2 floating-point algebra is checked with explicit numerical tolerances. Wall-clock timings are platform-, BLAS-, load-, process-count-, and scheduler-dependent and should not be expected to reproduce exactly.
+
+## License and release practice
+
+Copyright (c) 2026 Tiago Verissimo. This repository is distributed under the [MIT License](LICENSE). The license permits reuse subject to its notice and disclaimer; users remain responsible for checking compatibility with any third-party dependency or venue policy.
+
+For a citable public release, create a Git tag and GitHub Release for the exact reviewed commit, then archive that release with a DOI service such as Zenodo. Record the release tag, commit SHA-256, and DOI in the manuscript's code-and-data availability statement. The current artifact records already contain SHA-256 links for the graph, run, and Level 3 payloads.
 
 ## Verify the archived artifacts
 

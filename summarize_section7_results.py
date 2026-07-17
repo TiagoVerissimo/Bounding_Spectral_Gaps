@@ -709,6 +709,15 @@ def _size_summary(rows: list[dict[str, Any]], N: int) -> dict[str, Any]:
         for row, exact in zip(group, W_exact_values)
     ]
     K_gap_cert = float_column(group, "K_gap_cert")
+    n_vertices = float_column(group, "n_vertices")
+    previous_analytic_bound = 2.0 * (W_upper + n_vertices)
+    conventional_uncentered_bound = 2.0 * float_column(group, "D_norm_bound")
+    previous_reductions = 100.0 * (
+        previous_analytic_bound - K_gap_cert
+    ) / previous_analytic_bound
+    uncentered_reductions = 100.0 * (
+        conventional_uncentered_bound - K_gap_cert
+    ) / conventional_uncentered_bound
     K_gap_rounding_deltas = [
         Fraction.from_float(float(row["K_gap_cert"]))
         - rational_from_fields(
@@ -766,6 +775,18 @@ def _size_summary(rows: list[dict[str, Any]], N: int) -> dict[str, Any]:
             "K_gap_cert_upward_rounding_max": float(max(K_gap_rounding_deltas)),
             "K_gap_cert_upward_rounded_instances": int(
                 sum(delta > 0 for delta in K_gap_rounding_deltas)
+            ),
+            "previous_analytic_bound_definition": "2*(W_upper+n_vertices)",
+            "previous_analytic_bound_mean": float(np.mean(previous_analytic_bound)),
+            "conventional_uncentered_bound_definition": "2*max(W_upper,Lambda_I)",
+            "conventional_uncentered_bound_mean": float(
+                np.mean(conventional_uncentered_bound)
+            ),
+            "mean_reduction_vs_previous_analytic_percent": float(
+                np.mean(previous_reductions)
+            ),
+            "mean_reduction_vs_uncentered_percent": float(
+                np.mean(uncentered_reductions)
             ),
             "spectral_diameter_estimate_mean": float(np.mean(diameter)),
             "spectral_diameter_estimate_population_sd": float(np.std(diameter)),
@@ -844,7 +865,7 @@ def summary(
     first = validated[0]
     report: dict[str, Any] = {
         "_metadata": {
-            "summary_schema_version": 2,
+            "summary_schema_version": 3,
             "result_schema_version": EXPECTED_SCHEMA_VERSION,
             "graph_schema_version": EXPECTED_GRAPH_SCHEMA_VERSION,
             "csv_path": csv_path,
@@ -913,6 +934,7 @@ def render_tex(report: Mapping[str, Any]) -> bytes:
     metadata = report["_metadata"]
     weight_rows = []
     gap_rows = []
+    bound_comparison_rows = []
     global_rows = []
     solve_rows = []
     unresolved_rows = []
@@ -935,6 +957,13 @@ def render_tex(report: Mapping[str, Any]) -> bytes:
             f"{N} & {gap['spectral_diameter_estimate_mean']:.2f} & "
             f"{gap['K_gap_cert_mean']:.2f} & "
             f"{gap['cert_over_diameter_estimate_mean']:.2f} \\\\"
+        )
+        bound_comparison_rows.append(
+            f"{N} & {gap['previous_analytic_bound_mean']:.2f} & "
+            f"{gap['conventional_uncentered_bound_mean']:.2f} & "
+            f"{gap['K_gap_cert_mean']:.2f} & "
+            f"{gap['mean_reduction_vs_previous_analytic_percent']:.2f}\\% & "
+            f"{gap['mean_reduction_vs_uncentered_percent']:.2f}\\% \\\\"
         )
         global_rows.append(
             f"{N} & {global_conditional['resolved_instances']}/20 & "
@@ -976,6 +1005,7 @@ def render_tex(report: Mapping[str, Any]) -> bytes:
             rf"\providecommand{{\SectionSevenGraphArchiveSha}}{{\texttt{{{metadata['graph_archive_sha256']}}}}}",
             rf"\providecommand{{\SectionSevenWeightRows}}{_macro_rows(weight_rows)}",
             rf"\providecommand{{\SectionSevenGapDiameterRows}}{_macro_rows(gap_rows)}",
+            rf"\providecommand{{\SectionSevenBoundComparisonRows}}{_macro_rows(bound_comparison_rows)}",
             rf"\providecommand{{\SectionSevenGlobalConditionalRows}}{_macro_rows(global_rows)}",
             rf"\providecommand{{\SectionSevenSolveCountRows}}{_macro_rows(solve_rows)}",
             rf"\providecommand{{\SectionSevenUnresolvedRows}}{_macro_rows(unresolved_rows)}",

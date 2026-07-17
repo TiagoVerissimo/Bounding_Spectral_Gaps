@@ -15,6 +15,12 @@
       "cert_over_diameter_estimate_max": 1.6927139696088775,
       "cert_over_diameter_estimate_mean": 1.6380616183496328,
       "cert_over_diameter_estimate_min": 1.5832648578008277,
+      "conventional_uncentered_bound_definition": "2*max(W_upper,Lambda_I)",
+      "conventional_uncentered_bound_mean": 53.134892480264114,
+      "mean_reduction_vs_previous_analytic_percent": 51.34133381658821,
+      "mean_reduction_vs_uncentered_percent": 30.883115158086383,
+      "previous_analytic_bound_definition": "2*(W_upper+n_vertices)",
+      "previous_analytic_bound_mean": 75.13489248026413,
       "spectral_diameter_estimate_mean": 22.322543075940363,
       "spectral_diameter_estimate_population_sd": 1.9617644754501524
     },
@@ -116,6 +122,12 @@
       "cert_over_diameter_estimate_max": 1.7099785838032333,
       "cert_over_diameter_estimate_mean": 1.6396011472394512,
       "cert_over_diameter_estimate_min": 1.5708713127500744,
+      "conventional_uncentered_bound_definition": "2*max(W_upper,Lambda_I)",
+      "conventional_uncentered_bound_mean": 76.0730225194146,
+      "mean_reduction_vs_previous_analytic_percent": 50.985631262713575,
+      "mean_reduction_vs_uncentered_percent": 34.05155946855042,
+      "previous_analytic_bound_definition": "2*(W_upper+n_vertices)",
+      "previous_analytic_bound_mean": 102.0730225194146,
       "spectral_diameter_estimate_mean": 30.52213828307623,
       "spectral_diameter_estimate_population_sd": 2.3254457886398114
     },
@@ -241,7 +253,7 @@
       "main.py": "a6cade752c8530480b3741b86a17762b16f83f42c3eb3e5951321a19af1c0b47",
       "maxcut_gap_benchmark.py": "addb3bac26421d3de0d2bf7858e599a4b9187e5a902564dec63be983816442b7"
     },
-    "summary_schema_version": 2,
+    "summary_schema_version": 3,
     "timing_note": "Observed wall-clock timings are platform-, BLAS-, and scheduler-dependent"
   }
 }

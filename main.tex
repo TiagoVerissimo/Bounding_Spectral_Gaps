@@ -65,7 +65,7 @@
 
 \usepackage[colorlinks=true, linkcolor=blue, citecolor=magenta, urlcolor=teal]{hyperref}
 
-\title{\textbf{Shift-Invariant Gap Continuation and Selected Replayable Level-3 Anchors}}
+\title{\textbf{Shift-Invariant Spectral-Gap Continuation with Replayable Exact-Dyadic Certificates}}
 
 \author{
   \textbf{Tiago Verissimo}\\
@@ -80,12 +80,7 @@
 \maketitle
 
 \begin{abstract}
-We study lower-bound propagation for the instantaneous spectral gap of affine Hamiltonian paths. For $D=H_P-H_I$, Weyl's inequalities give the shift-invariant constant
-\begin{equation*}
-K_{\mathrm{gap}}=\lambda_{\max}(D)-\lambda_{\min}(D)
-=2\min_{c\in\mathbb R}\norm{D-cI}_2.
-\end{equation*}
-For archived binary64 Max-Cut weights interpreted as exact dyadic rationals, the schema-4 runs use an outward-rounded direct bound $K_{\mathrm{gap,cert}}\ge W_{\mathrm{exact}}+\Lambda_I$, never the older $2(W+n_v)$ comparison. The continuation sweep uses ordinary adaptive steps and an exponential mark-and-probe rule after floor triggers; every interval is classified from the actual-length bound $B_k$. Its continuous-path outputs remain Level~2 because the sparse anchor indexing is conditional. Separately, replayable exact records and an independent comparison-matrix and interlacing checker verify four selected exact-dyadic seed-0 anchors at Level~3, without upgrading either continuous sweep. Perron--Frobenius structure already supplies interior ground-state uniqueness for the retained benchmark class, so the experiments assess quantitative lower bounds and workload rather than discover positivity. Positive-semidefinite monotonicity remains only a supplementary componentwise comparison.
+We develop an auditable method for propagating lower bounds on the instantaneous spectral gap of affine adiabatic Hamiltonians. Weyl's inequalities yield a shift-invariant Lipschitz constant equal to the spectral width of $H_P-H_I$, improving uncentered norm estimates. An actual-step mark-and-probe continuation conditionally resolves all 20 $N=10$ and 19 of 20 $N=12$ Max-Cut instances. The continuous sweeps rely on floating-point eigenvalue indexing and are therefore conditional. Separately, exact-dyadic comparison-matrix checks certify four selected anchors. The study demonstrates a reproducible finite-size verification workflow; it does not establish asymptotic scaling, speedup, or a fully verified path.
 \end{abstract}
 
 \section{Introduction and Motivation}
@@ -115,7 +110,7 @@ K_{\mathrm{gap,cert}}\ge W_{\mathrm{exact}}+\Lambda_I\ge K_{\mathrm{gap}}.
 \end{equation}
 Ordinary adaptive steps use $\eta\Delta_{+,\mathrm{lo}}/K_{\mathrm{gap,cert}}$. A floor trigger instead marks the interval, advances by an exponentially growing capped probe, and resolves it only when the bound computed from the actual clipped length is positive.
 
-All matrix inequalities used here are classical. The methodological contribution is their assembly into an explicit continuation and auditable schema-4 record format, together with a finite-size workload assessment. The continuous sweeps use conditionally indexed floating-point anchors and remain Level~2. Four selected exact-dyadic anchors have replayable records and independent Level-3 checks at those points only. The retained Max-Cut paths also have Perron--Frobenius ground-state uniqueness in the interior and are filtered for endpoint nondegeneracy, so the aggregate experiment measures the strength and cost of the lower-bound construction rather than whether the mathematical path is open. The PSD results are supplementary and do not drive the algorithm.
+All matrix inequalities used here are classical. The methodological contribution is their assembly into an explicit continuation and auditable schema-4 record format, together with a finite-size workload assessment. The continuous sweeps use conditionally indexed floating-point anchors and remain Level~2. Four selected exact-dyadic anchors have replayable records and independent Level-3 checks at those points only. The retained Max-Cut paths also have Perron--Frobenius ground-state uniqueness in the interior and are filtered for endpoint nondegeneracy, so the aggregate experiment measures the strength and cost of the lower-bound construction rather than whether the mathematical path is open. The PSD results are supplementary and do not drive the algorithm. The empirical scope is intentionally limited to 20 connected instances at each retained size: it demonstrates the artifact and verification workflow, but does not support asymptotic scaling or uniform runtime claims.
 
 \section{Related Work and Scope}
 This paper positions itself at the intersection of classical matrix analysis and the physical engineering of adiabatic pathways. The literature driving this study can be categorized into three major streams:
@@ -129,7 +124,7 @@ The ``folk'' condition $T\propto\Delta^{-2}$ is generally insufficient by itself
 Werner et al.\ \cite{PhysRevResearch.5.043236} estimate the location $s^*$ of a minimum gap from graph-theoretic information. Our complementary objective is to propagate supplied lower bounds and identify intervals that the chosen continuation data do or do not resolve.
 
 \subsection{Constraints, Catalysts, and the Scope of PSD Comparisons}
-QUBO penalty constructions are surveyed by Lucas \cite{Lucas2014}, while stoquastic and non-stoquastic catalysts have been studied as path modifications near difficult transitions \cite{SekiNishimori2012, Albash2019, Crosson2020designing}. Spectral gap amplification in the sense of Somma and Boixo \cite{SommaBoixo2013} is a separate construction with additional structure. The elementary PSD monotonicity statements below say only that adding a PSD term cannot lower an ordered eigenvalue. Because the ground and excited energies may rise by different amounts---or by the same scalar shift---this observation neither predicts catalyst performance nor constitutes a catalyst-design principle.
+QUBO penalty constructions are surveyed by Lucas \cite{Lucas2014}, while stoquastic and non-stoquastic catalysts have been studied as path modifications near difficult transitions \cite{SekiNishimori2012, Albash2019, Crosson2020designing}. Spectral gap amplification in the sense of Somma and Boixo \cite{SommaBoixo2013} is a separate construction with additional structure. The supplementary PSD monotonicity statements in Appendix~\ref{app:psd-comparisons} say only that adding a PSD term cannot lower an ordered eigenvalue. Because the ground and excited energies may rise by different amounts---or by the same scalar shift---this observation neither predicts catalyst performance nor constitutes a catalyst-design principle.
 
 \subsection{Verified Eigensolvers and Eigenvalue Enclosures}
 Verified numerical linear algebra can provide rigorous indexed eigenvalue enclosures using interval arithmetic, variational bounds, or verified inertia calculations \cite{Rump2010Acta,Temple1928,Kato1949,Lehmann1950}. Residual norms from an ordinary floating-point sparse solve provide only spectral-existence information near Ritz values and do not identify eigenvalue indices. The selected replayable exact anchors below instead combine an exact Rayleigh upper bound with a comparison-matrix lower bound for a principal submatrix and Cauchy interlacing. Their exact-dyadic specifications and no-tolerance checker make the pointwise results independently reproducible; this is a classical finite-dimensional route to indexed verification, not a claim that the floating-point continuation has become fully verified.
@@ -153,7 +148,6 @@ For the affine path $H(s)=H_I+sD$, $D=H_P-H_I$, the paper makes the following li
 
     \item \textbf{Exact indexed anchor verification.} A comparison-matrix theorem combines scaled diagonal dominance, a quadratic-form comparison, Cauchy interlacing, and an exact Rayleigh quotient. Replayable exact rational records and an independent checker apply this result to four selected seed-0 anchors. These pointwise Level-3 results do not verify either continuous sweep.
 
-    \item \textbf{Complementary PSD comparisons.} Componentwise Weyl monotonicity and Rayleigh--Ritz yield elementary energy and gap lower bounds under PSD hypotheses. They do not order catalyzed gaps and are not catalyst-design results.
 \end{enumerate}
 
 The aggregate tables are imported from the generated schema-\SectionSevenResultSchema{} summary rather than transcribed by hand. Their continuous-path lower bounds remain conditional on floating-point eigenvalue indexing.
@@ -205,7 +199,7 @@ E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s).
 \end{equation}
 The gap function is $\Delta(s)=E_1(s)-E_0(s)$. Thus $E_k(s)$ corresponds to $\lambda_{k+1}(H(s))$ under the generic matrix-indexing convention.
 
-\section{Shift-Invariant Weyl Gap Bounds and PSD Comparisons}
+\section{Shift-Invariant Gap Propagation and Exact Anchor Certificates}
 
 Weyl's inequalities control ordered eigenvalues under Hermitian perturbations. Applied directly to the difference of two energy levels, they retain only the spectral width of the perturbation and discard its gap-irrelevant scalar part.
 
@@ -397,188 +391,9 @@ so $E_1(H)\ge\ell$. Finally, Rayleigh--Ritz gives $E_0(H)\le U_0$ for every nonz
 The theorem is a classical comparison-and-interlacing certificate. Its force in an implementation comes from checking the input matrix, positive witness, componentwise inequalities, and Rayleigh quotient in exact arithmetic rather than from a floating-point tolerance.
 \end{remark}
 
-\subsection{Complementary Positive-Semidefinite Bounds}
-
-\begin{proposition}[Componentwise Floors and a Gap Lower Bound]
-\label{prop:componentwise-floors}
-Assume that the initial and problem Hamiltonians are positive-semidefinite,
-\begin{equation}
-H_I\ge 0,
-\qquad
-H_P\ge 0,
-\end{equation}
-and consider the affine adiabatic path
-\begin{equation}
-H(s)=(1-s)H_I+sH_P,
-\qquad s\in[0,1].
-\end{equation}
-Let the eigenvalues of $H(s)$ be written as
-\begin{equation}
-E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s),
-\end{equation}
-and write the eigenvalues of $H_I$ and $H_P$ in the same non-decreasing order. Then, for every $k=0,\dots,d-1$,
-\begin{equation}
-\label{eq:componentwise-floor}
-E_k(s)
-\ge
-\max\{(1-s)E_k(H_I),\,sE_k(H_P)\}.
-\end{equation}
-Moreover, if $\ket{\psi_I}$ is a normalized ground state of $H_I$, then the first spectral gap satisfies the lower bound
-\begin{equation}
-\label{eq:psd-gap-bound}
-\Delta(s)
-\ge
-\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
--(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
-\end{equation}
-\end{proposition}
-
-\begin{proof}
-Fix $s\in[0,1]$. Since $H_P\ge 0$, the operator $sH_P$ is positive-semidefinite. We may therefore apply the positive-semidefinite monotonicity corollary to
-\begin{equation}
-A=(1-s)H_I,
-\qquad
-B=sH_P.
-\end{equation}
-This gives, for every eigenvalue index $k$,
-\begin{equation}
-E_k(s)=E_k(A+B)
-\ge E_k(A).
-\end{equation}
-Because $1-s\ge 0$, scaling the Hamiltonian $H_I$ by $1-s$ scales all of its eigenvalues by $1-s$. Hence
-\begin{equation}
-E_k(s)
-\ge
-(1-s)E_k(H_I).
-\end{equation}
-Similarly, since $(1-s)H_I$ is positive-semidefinite, we can instead write
-\begin{equation}
-A=sH_P,
-\qquad
-B=(1-s)H_I.
-\end{equation}
-Applying the same corollary gives
-\begin{equation}
-E_k(s)=E_k(A+B)
-\ge E_k(A)=sE_k(H_P).
-\end{equation}
-Combining the two lower bounds yields
-\begin{equation}
-E_k(s)
-\ge
-\max\{(1-s)E_k(H_I),\,sE_k(H_P)\}.
-\end{equation}
-This proves the componentwise eigenvalue floor.
-
-To obtain a lower bound on the spectral gap, we combine a lower bound on $E_1(s)$ with an upper bound on $E_0(s)$. Taking $k=1$ in the componentwise estimate gives
-\begin{equation}
-E_1(s)
-\ge
-\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}.
-\end{equation}
-On the other hand, the variational principle gives, for any normalized trial state $\ket{\psi}$,
-\begin{equation}
-E_0(s)\le \opvalue{\psi}{H(s)}{\psi}.
-\end{equation}
-Choosing $\ket{\psi}=\ket{\psi_I}$, where $\ket{\psi_I}$ is a ground state of $H_I$, gives
-\begin{align}
-E_0(s)
-&\le \opvalue{\psi_I}{(1-s)H_I+sH_P}{\psi_I}\\
-&=(1-s)E_0(H_I)+s\opvalue{\psi_I}{H_P}{\psi_I}.
-\end{align}
-Therefore
-\begin{align}
-\Delta(s)&=E_1(s)-E_0(s)\\
-&\ge
-\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
--(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
-\end{align}
-This proves the claimed lower bound.
-\end{proof}
-
-
-\begin{proposition}[A PSD Catalyst Addition Raises Ordered Energy Levels]
-\label{prop:psd-catalysts}
-Consider a catalyst-assisted adiabatic path of the form
-\begin{equation}
-H_{\mathrm{cat}}(s)=H(s)+f(s)H_C,
-\qquad
-H(s)=(1-s)H_I+sH_P,
-\end{equation}
-where $H_C$ is Hermitian and $f(s)$ is a real-valued scheduling function. Assume that
-\begin{equation}
-H_C\ge 0,
-\qquad
-f(s)\ge 0
-\qquad
-\text{for all }s\in[0,1].
-\end{equation}
-Let
-\begin{equation}
-E_k(s)=\lambda_{k+1}(H(s)),
-\qquad
-E_k^{\mathrm{cat}}(s)=\lambda_{k+1}(H_{\mathrm{cat}}(s)),
-\qquad k=0,\ldots,d-1,
-\end{equation}
-with eigenvalues arranged in non-decreasing order. Then, for every $k=0,\dots,d-1$ and every $s\in[0,1]$,
-\begin{equation}
-E_k^{\mathrm{cat}}(s)\ge E_k(s).
-\end{equation}
-\end{proposition}
-
-\begin{proof}
-Fix $s\in[0,1]$. Since $B=f(s)H_C\ge0$, Corollary~\ref{cor:psd-monotonicity} gives
-\begin{equation}
-\lambda_{k+1}(H(s))\le\lambda_{k+1}(H(s)+B),
-\qquad k=0,\ldots,d-1,
-\end{equation}
-which is the stated inequality.
-\end{proof}
-
-\begin{remark}
-Proposition~\ref{prop:psd-catalysts} compares absolute ordered energies only. A scalar PSD addition raises every energy equally and leaves the gap unchanged; more general PSD additions can raise the ground energy more than the first excited energy. The proposition therefore gives neither a gap ordering nor a physical criterion for an effective catalyst.
-\end{remark}
-
-
-\begin{proposition}[Constraint Penalties Raise the AQC Energy Levels]
-\label{prop:constraint-penalties}
-Consider a constrained-optimization adiabatic path
-\begin{equation}
-H(s)=(1-s)H_I+sH_P,
-\qquad s\in[0,1],
-\end{equation}
-where the problem Hamiltonian decomposes as
-\begin{equation}
-H_P=H_{\mathrm{cost}}+\gamma H_{\mathrm{constraints}},
-\qquad \gamma>0.
-\end{equation}
-Assume that $H_I$, $H_{\mathrm{cost}}$, and $H_{\mathrm{constraints}}$ are Hermitian and that
-\begin{equation}
-H_{\mathrm{constraints}}\ge 0.
-\end{equation}
-Define the unconstrained adiabatic path
-\begin{equation}
-H_{\mathrm{unc}}(s)=(1-s)H_I+sH_{\mathrm{cost}}.
-\end{equation}
-Define $E_k(s)=\lambda_{k+1}(H(s))$ and $E_k^{\mathrm{unc}}(s)=\lambda_{k+1}(H_{\mathrm{unc}}(s))$. Then, for every $k=0,\dots,d-1$ and every $s\in[0,1]$,
-\begin{equation}
-E_k(s)\ge E_k^{\mathrm{unc}}(s).
-\end{equation}
-\end{proposition}
-
-\begin{proof}
-Fix $s\in[0,1]$ and set $B=s\gamma H_{\mathrm{constraints}}\ge0$. Corollary~\ref{cor:psd-monotonicity}, applied at index $k+1$, gives
-\begin{equation}
-\lambda_{k+1}(H_{\mathrm{unc}}(s))
-\le\lambda_{k+1}(H_{\mathrm{unc}}(s)+B)
-=\lambda_{k+1}(H(s)),
-\end{equation}
-for $k=0,\ldots,d-1$.
-\end{proof}
-
 \section{Computational Results}
 
-We report ordinary floating-point experiments with the continuation rule on finite weighted Erd\H{o}s--R\'{e}nyi Max-Cut instances with $p=0.5$. Sampled graphs are required to be connected, and the generator initially retains instances whose reduced problem Hamiltonian is numerically found to have a nondegenerate ground state. The artifact verifier subsequently enumerates every pinned configuration using exact dyadic arithmetic and confirms endpoint nondegeneracy for all 40 archived instances. The continuous sweeps assess conditional lower-bound envelopes and sparse-eigensolve workload and are not verified numerical certificates. The four selected anchors in Table~\ref{tab:level3-anchors} are separate replayable Level-3 point certificates.
+We report ordinary floating-point experiments with the continuation rule on finite weighted Erd\H{o}s--R\'{e}nyi Max-Cut instances with $p=0.5$. Sampled graphs are required to be connected, and the generator initially retains instances whose reduced problem Hamiltonian is numerically found to have a nondegenerate ground state. The artifact verifier subsequently enumerates every pinned configuration using exact dyadic arithmetic and confirms endpoint nondegeneracy for all 40 archived instances. The continuous sweeps assess conditional lower-bound envelopes and sparse-eigensolve workload and are not verified numerical certificates. The four selected anchors in Table~\ref{tab:level3-anchors} are separate replayable Level-3 point certificates. The evaluation asks four questions: how much the shift-invariant constant improves the earlier analytic estimates; how many paths the conditional continuation resolves; what sparse-eigensolve workload is observed; and which selected claims can be checked exactly and independently.
 
 \subsection{Problem Formulation, Symmetry Sectors, and Hamiltonians}
 The physical path is
@@ -676,7 +491,7 @@ The implementation first forms the least binary64 number $W_{\mathrm{upper}}\ge 
 \boxed{K_{\mathrm{gap,cert}}\ge W_{\mathrm{upper}}+\Lambda_I
 \ge W_{\mathrm{exact}}+\Lambda_I\ge K_{\mathrm{gap},+}.}
 \end{equation}
-This is a direct spectral-width certificate with outward rounding. Table~\ref{tab:gap_diameter} compares its ensemble mean with ordinary floating-point estimates of the actual diameter $K_{\mathrm{gap},+}$.
+This is a direct spectral-width certificate with outward rounding. Unlike an uncentered spectral-norm comparison, it is invariant under scalar shifts of the interpolation direction, which cannot change a gap; the reported table is a tightness diagnostic for this analytic certificate, not a comparison with a competing continuation method. Table~\ref{tab:gap_diameter} compares its ensemble mean with ordinary floating-point estimates of the actual diameter $K_{\mathrm{gap},+}$.
 
 \begin{table}[htbp]
 \centering
@@ -690,6 +505,24 @@ $N$ & Estimated $K_{\mathrm{gap},+}$ & $K_{\mathrm{gap,cert}}$ & Cert./estimated
 \end{tabular}
 \caption{Means over 20 connected instances at each size. The diameter column is an ordinary floating-point extremal-eigenvalue diagnostic, whereas $K_{\mathrm{gap,cert}}$ is the outward-rounded analytic upper bound in Eq.~\eqref{eq:computational-gap-bounds}.}
 \label{tab:gap_diameter}
+\end{table}
+
+Table~\ref{tab:bound_comparison} isolates the gain in the propagation constant using the same archived instances. It compares the previous implementation-level estimate, a fair uncentered spectral-norm certificate, and the shift-invariant certificate. A smaller valid constant enlarges the interval propagated from a fixed anchor, but the reduction is not by itself a runtime or speedup guarantee.
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{cccccc}
+\toprule
+$N$ & Previous & Uncentered & Shift-invariant & \multicolumn{2}{c}{Mean reduction} \\
+\cmidrule(r){5-6}
+& $2(W_{\mathrm{upper}}+n_v)$ & $2\max\{W_{\mathrm{upper}},\Lambda_I\}$ & $K_{\mathrm{gap,cert}}$ & vs. previous & vs. uncentered \\
+\midrule
+\SectionSevenBoundComparisonRows
+\bottomrule
+\end{tabular}
+\caption{Mean valid analytic propagation constants over 20 instances at each size. Reduction columns are means of the per-instance percentage reduction achieved by $K_{\mathrm{gap,cert}}$. The previous column reproduces the earlier implementation-level estimate; the uncentered column is the sharper conventional certificate obtained from $2\norm{D_+}_2\le 2\max\{W_{\mathrm{upper}},\Lambda_I\}$.}
+\label{tab:bound_comparison}
 \end{table}
 
 The generated summary also reports how often the endpoint-only bounds are positive on the fixed diagnostic grid.
@@ -725,7 +558,7 @@ This existence statement does not identify the nearby eigenvalue's index or show
 \end{equation}
 The residual $r_0$ remains a convergence diagnostic but is not used in this formula. Equation~\eqref{eq:conditional-anchor} is therefore a conditional floating-point lower-bound estimate, not an independently verified indexed enclosure.
 
-We distinguish three levels:
+For clarity, the following certification levels are terminology defined for this study rather than an external community standard. We distinguish three levels:
 \begin{description}
 \item[Level 1: formal implication.] Theorems apply to mathematical inputs satisfying their stated inequalities.
 \item[Level 2: conditional floating-point continuation.] Sparse Ritz values and residual diagnostics supply routine sweep anchors without verified indexing or outward-rounded residual arithmetic.
@@ -915,7 +748,7 @@ Figures~\ref{fig:grid_N10} and \ref{fig:grid_N12} visualize the solve locations 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{grid_density_vs_gap_N12.png}
-\caption{Adaptive and fixed-grid solve locations relative to a sampled floating-point reduced-sector Ritz-gap curve $\Delta_+$ for the connected $N=12$, seed-0 instance.}
+\caption{Adaptive and fixed-grid solve locations relative to a sampled floating-point reduced-sector Ritz-gap curve $\Delta_+$ for the connected $N=12$, seed-0 instance. The plot visualizes placement only; it is not a verified gap plot.}
 \label{fig:grid_N12}
 \end{figure}
 
@@ -984,6 +817,12 @@ The $N=12$ call-count distribution is skewed by the two largest runs: 2153 adapt
 
 The data show instance-dependent workload rather than a uniform speedup. The sampled $\Delta_+$ curves are visual diagnostics, and the global values in Table~\ref{tab:global-conditional} quantify the reach of the conditional continuation bounds. Table~\ref{tab:gap_diameter} shows the conservatism of the direct outward-rounded $K_{\mathrm{gap,cert}}$ relative to floating-point diameter estimates. Anchor count alone does not determine wall-clock cost because Krylov convergence and warm-start quality also vary.
 
+
+\subsection{Scope and Limitations}
+The certification levels used here are local labels for the evidence recorded by this study. All continuous sweeps are Level~2 because ordinary sparse Ritz calculations do not independently certify eigenvalue indexing or outward-rounded residual arithmetic. Only the four points in Table~\ref{tab:level3-anchors} are Level~3 exact-dyadic certificates, and they do not establish a verified continuous path.
+
+The 40-instance cohort contains only $N=10$ and $N=12$ problems and therefore supports neither asymptotic scaling claims nor conclusions about physically large systems. The fixed-grid and adaptive counts do not provide matched guarantees, so their comparison measures workload rather than speedup. One $N=12$ run retains a width-$0.001$ unresolved interval. Finally, Perron--Frobenius irreducibility and exact endpoint enumeration already establish nondegeneracy for the retained class; the experiment measures quantitative bound strength and cost, not discovery of gap positivity.
+
 \subsection{Integral-Based Cost Model}
 Ignoring endpoint clipping, floor overrides, and integer rounding, the implemented rule suggests the continuum approximation
 \begin{equation}
@@ -1024,13 +863,195 @@ K_{\mathrm{gap}}=\lambda_{\max}(D)-\lambda_{\min}(D)
 \end{equation}
 not, in general, the larger comparison value $2\norm{D}_2$. Using a valid upper bound $K_{\mathrm{gap,cert}}$, the continuation theorem propagates valid anchor lower bounds over intervals classified by $B_k>0$. The schema-4 bookkeeping distinguishes proposed, floor-overridden, probe-planned, and actual endpoint-clipped lengths, treats $K_{\mathrm{gap,cert}}=0$ explicitly, and gives both an unconditional termination bound and a refined bound.
 
-The regenerated sparse Max-Cut sweeps remain conditional Level-2 floating-point assessments: all 20 $N=10$ runs and 19 of 20 $N=12$ runs are conditionally resolved, with one width-$0.001$ unresolved interval for $N=12$, seed 13. Perron--Frobenius irreducibility gives interior ground-state uniqueness for these reduced stoquastic paths, while exact dyadic enumeration independently confirms endpoint nondegeneracy for all 40 archived graphs. Accordingly, the aggregate continuation results quantify lower-bound conservatism and workload rather than establish a previously unknown positivity property or a speedup. PSD monotonicity supplies only componentwise energy comparisons and has no standalone gap-amplification implication.
+The regenerated sparse Max-Cut sweeps remain conditional Level-2 floating-point assessments: all 20 $N=10$ runs and 19 of 20 $N=12$ runs are conditionally resolved, with one width-$0.001$ unresolved interval for $N=12$, seed 13. Perron--Frobenius irreducibility gives interior ground-state uniqueness for these reduced stoquastic paths, while exact dyadic enumeration independently confirms endpoint nondegeneracy for all 40 archived graphs. Accordingly, the aggregate continuation results quantify lower-bound conservatism and workload rather than establish a previously unknown positivity property or a speedup.
 
 Four selected seed-0 anchors do have replayable Level-3 exact-dyadic records: an independent no-tolerance checker proves indexed lower bounds by comparison matrices, interlacing, and exact Rayleigh quotients. These pointwise certificates do not make either continuation Level~3. A full Level-3 sweep would require independently checkable indexed enclosures at every continuation anchor. The present contribution remains a transparent assembly of classical inequalities and auditable bookkeeping, not a new matrix inequality or a verified many-body gap computation.
 
 \section{Accessibility of the Code and Data}
 
-The code and data are publicly available at \url{https://github.com/TiagoVerissimo/Bounding_Spectral_Gaps}. The repository includes the schema-4 continuation records and generated \path{results/section7_summary.tex}, together with the selected Level-3 exact-dyadic specifications, exact result records, and independent checker. Hashes and exact rational payloads make the four point anchors replayable; the accompanying scope metadata keeps the continuous sweeps at Level~2.
+The code and data are publicly available at \url{https://github.com/TiagoVerissimo/Bounding_Spectral_Gaps}. The repository includes the schema-4 continuation records and generated \path{results/section7_summary.tex}, together with the selected Level-3 exact-dyadic specifications, exact result records, and independent checker. Hashes and exact rational payloads make the four point anchors replayable; the accompanying scope metadata keeps the continuous sweeps at Level~2. The repository is distributed under the MIT License and its README records the reference environment plus commands for unit tests, deterministic-summary checks, read-only artifact verification, exact-anchor verification, figure regeneration, and full numerical reproduction. A versioned archival release should be cited when one is created.
+
+
+\appendix
+\section{Supplementary Positive-Semidefinite Comparisons}
+\label{app:psd-comparisons}
+
+\begin{proposition}[Componentwise Floors and a Gap Lower Bound]
+\label{prop:componentwise-floors}
+Assume that the initial and problem Hamiltonians are positive-semidefinite,
+\begin{equation}
+H_I\ge 0,
+\qquad
+H_P\ge 0,
+\end{equation}
+and consider the affine adiabatic path
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1].
+\end{equation}
+Let the eigenvalues of $H(s)$ be written as
+\begin{equation}
+E_0(s)\le E_1(s)\le \cdots \le E_{d-1}(s),
+\end{equation}
+and write the eigenvalues of $H_I$ and $H_P$ in the same non-decreasing order. Then, for every $k=0,\dots,d-1$,
+\begin{equation}
+\label{eq:componentwise-floor}
+E_k(s)
+\ge
+\max\{(1-s)E_k(H_I),\,sE_k(H_P)\}.
+\end{equation}
+Moreover, if $\ket{\psi_I}$ is a normalized ground state of $H_I$, then the first spectral gap satisfies the lower bound
+\begin{equation}
+\label{eq:psd-gap-bound}
+\Delta(s)
+\ge
+\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
+-(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Fix $s\in[0,1]$. Since $H_P\ge 0$, the operator $sH_P$ is positive-semidefinite. We may therefore apply the positive-semidefinite monotonicity corollary to
+\begin{equation}
+A=(1-s)H_I,
+\qquad
+B=sH_P.
+\end{equation}
+This gives, for every eigenvalue index $k$,
+\begin{equation}
+E_k(s)=E_k(A+B)
+\ge E_k(A).
+\end{equation}
+Because $1-s\ge 0$, scaling the Hamiltonian $H_I$ by $1-s$ scales all of its eigenvalues by $1-s$. Hence
+\begin{equation}
+E_k(s)
+\ge
+(1-s)E_k(H_I).
+\end{equation}
+Similarly, since $(1-s)H_I$ is positive-semidefinite, we can instead write
+\begin{equation}
+A=sH_P,
+\qquad
+B=(1-s)H_I.
+\end{equation}
+Applying the same corollary gives
+\begin{equation}
+E_k(s)=E_k(A+B)
+\ge E_k(A)=sE_k(H_P).
+\end{equation}
+Combining the two lower bounds yields
+\begin{equation}
+E_k(s)
+\ge
+\max\{(1-s)E_k(H_I),\,sE_k(H_P)\}.
+\end{equation}
+This proves the componentwise eigenvalue floor.
+
+To obtain a lower bound on the spectral gap, we combine a lower bound on $E_1(s)$ with an upper bound on $E_0(s)$. Taking $k=1$ in the componentwise estimate gives
+\begin{equation}
+E_1(s)
+\ge
+\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}.
+\end{equation}
+On the other hand, the variational principle gives, for any normalized trial state $\ket{\psi}$,
+\begin{equation}
+E_0(s)\le \opvalue{\psi}{H(s)}{\psi}.
+\end{equation}
+Choosing $\ket{\psi}=\ket{\psi_I}$, where $\ket{\psi_I}$ is a ground state of $H_I$, gives
+\begin{align}
+E_0(s)
+&\le \opvalue{\psi_I}{(1-s)H_I+sH_P}{\psi_I}\\
+&=(1-s)E_0(H_I)+s\opvalue{\psi_I}{H_P}{\psi_I}.
+\end{align}
+Therefore
+\begin{align}
+\Delta(s)&=E_1(s)-E_0(s)\\
+&\ge
+\max\{(1-s)E_1(H_I),\,sE_1(H_P)\}
+-(1-s)E_0(H_I)-s\opvalue{\psi_I}{H_P}{\psi_I}.
+\end{align}
+This proves the claimed lower bound.
+\end{proof}
+
+
+\begin{proposition}[A PSD Catalyst Addition Raises Ordered Energy Levels]
+\label{prop:psd-catalysts}
+Consider a catalyst-assisted adiabatic path of the form
+\begin{equation}
+H_{\mathrm{cat}}(s)=H(s)+f(s)H_C,
+\qquad
+H(s)=(1-s)H_I+sH_P,
+\end{equation}
+where $H_C$ is Hermitian and $f(s)$ is a real-valued scheduling function. Assume that
+\begin{equation}
+H_C\ge 0,
+\qquad
+f(s)\ge 0
+\qquad
+\text{for all }s\in[0,1].
+\end{equation}
+Let
+\begin{equation}
+E_k(s)=\lambda_{k+1}(H(s)),
+\qquad
+E_k^{\mathrm{cat}}(s)=\lambda_{k+1}(H_{\mathrm{cat}}(s)),
+\qquad k=0,\ldots,d-1,
+\end{equation}
+with eigenvalues arranged in non-decreasing order. Then, for every $k=0,\dots,d-1$ and every $s\in[0,1]$,
+\begin{equation}
+E_k^{\mathrm{cat}}(s)\ge E_k(s).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Fix $s\in[0,1]$. Since $B=f(s)H_C\ge0$, Corollary~\ref{cor:psd-monotonicity} gives
+\begin{equation}
+\lambda_{k+1}(H(s))\le\lambda_{k+1}(H(s)+B),
+\qquad k=0,\ldots,d-1,
+\end{equation}
+which is the stated inequality.
+\end{proof}
+
+\begin{remark}
+Proposition~\ref{prop:psd-catalysts} compares absolute ordered energies only. A scalar PSD addition raises every energy equally and leaves the gap unchanged; more general PSD additions can raise the ground energy more than the first excited energy. The proposition therefore gives neither a gap ordering nor a physical criterion for an effective catalyst.
+\end{remark}
+
+
+\begin{proposition}[Constraint Penalties Raise the AQC Energy Levels]
+\label{prop:constraint-penalties}
+Consider a constrained-optimization adiabatic path
+\begin{equation}
+H(s)=(1-s)H_I+sH_P,
+\qquad s\in[0,1],
+\end{equation}
+where the problem Hamiltonian decomposes as
+\begin{equation}
+H_P=H_{\mathrm{cost}}+\gamma H_{\mathrm{constraints}},
+\qquad \gamma>0.
+\end{equation}
+Assume that $H_I$, $H_{\mathrm{cost}}$, and $H_{\mathrm{constraints}}$ are Hermitian and that
+\begin{equation}
+H_{\mathrm{constraints}}\ge 0.
+\end{equation}
+Define the unconstrained adiabatic path
+\begin{equation}
+H_{\mathrm{unc}}(s)=(1-s)H_I+sH_{\mathrm{cost}}.
+\end{equation}
+Define $E_k(s)=\lambda_{k+1}(H(s))$ and $E_k^{\mathrm{unc}}(s)=\lambda_{k+1}(H_{\mathrm{unc}}(s))$. Then, for every $k=0,\dots,d-1$ and every $s\in[0,1]$,
+\begin{equation}
+E_k(s)\ge E_k^{\mathrm{unc}}(s).
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Fix $s\in[0,1]$ and set $B=s\gamma H_{\mathrm{constraints}}\ge0$. Corollary~\ref{cor:psd-monotonicity}, applied at index $k+1$, gives
+\begin{equation}
+\lambda_{k+1}(H_{\mathrm{unc}}(s))
+\le\lambda_{k+1}(H_{\mathrm{unc}}(s)+B)
+=\lambda_{k+1}(H(s)),
+\end{equation}
+for $k=0,\ldots,d-1$.
+\end{proof}
 
 
 \bibliographystyle{plain}
