@@ -332,53 +332,109 @@ If $K_{\mathrm{gap}}^{\mathrm{ub}}>0$, the right-hand side is positive for $|s-s
 
 We report floating-point experiments with the continuation rule on finite weighted Erd\H{o}s--R\'{e}nyi Max-Cut instances with $p=0.5$. Sampled graphs are required to be connected, and the generator retains instances whose reduced problem Hamiltonian is numerically found to have a nondegenerate ground state. The experiments assess conditional lower-bound envelopes rather than independently verified enclosures. The evaluation asks three questions: how much the shift-invariant constant improves earlier analytic estimates; how many paths the continuation resolves under its numerical assumptions; and what sparse-eigensolve workload is observed.
 
-\subsection{Problem Formulation, Symmetry Sectors, and Hamiltonians}
-The physical path is
+\subsection{Matrix Formulation and Symmetry Reduction}
+Let $G=(V,E)$ be an undirected graph with $V=\{1,\ldots,n_v\}$, $n_v\ge2$, and positive edge weights $w_{ij}$. On
 \begin{equation}
-H^{\mathrm{phys}}(s)=(1-s)H_I^{\mathrm{phys}}+sH_P^{\mathrm{phys}},
+\mathcal H_{\mathrm{full}}:=(\mathbb C^2)^{\otimes n_v}
+\cong\mathbb C^{2^{n_v}},
+\end{equation}
+whose standard basis is indexed by $y\in\{0,1\}^{n_v}$, define
+\begin{equation}
+\label{eq:full-endpoint-matrices}
+H_I^{\mathrm{full}}:=\frac12\sum_{i=1}^{n_v}(I-X_i),
+\qquad
+H_P^{\mathrm{full}}:=\sum_{y\in\{0,1\}^{n_v}}c(y)\ket{y}\!\bra{y},
+\end{equation}
+where
+\begin{equation}
+c(y):=\sum_{(i,j)\in E}w_{ij}\mathbf 1_{\{y_i=y_j\}}.
+\end{equation}
+Thus $c(y)$ is the total weight of edges whose endpoints receive the same binary label. The matrix path studied numerically is the affine family
+\begin{equation}
+H^{\mathrm{full}}(s):=(1-s)H_I^{\mathrm{full}}+sH_P^{\mathrm{full}},
 \qquad s\in[0,1].
 \end{equation}
-The Max-Cut problem Hamiltonian is invariant under global bit complementation. A cut and its complement therefore have the same energy, so the full-space problem ground state is at least doubly degenerate and the physical endpoint gap satisfies $\Delta_{\mathrm{phys}}(1)=0$ in $\mathcal H\cong\mathbb C^{2^{n_v}}$.
 
-Both endpoint Hamiltonians commute with the global spin flip $P=\prod_{i=1}^{n_v}X_i$. The physical driver ground state $\ket{+}^{\otimes n_v}$ lies in the even sector $\mathcal H_+$, and parity conservation keeps the evolution in that sector. Put $N=n_v-1$. For each $x\in\{0,1\}^N$, let $\bar x$ denote its bitwise complement and define the normalized even-parity vector
+Let
+\begin{equation}
+P:=\prod_{i=1}^{n_v}X_i.
+\end{equation}
+This matrix is a self-adjoint involution, and its action on the standard basis is $P\ket{y}=\ket{\bar y}$, where $\bar y$ is the bitwise complement of $y$. Since $c(\bar y)=c(y)$ and the factors $X_i$ commute, both matrices in Eq.~\eqref{eq:full-endpoint-matrices} commute with $P$. Hence
+\begin{equation}
+\mathcal H_{\mathrm{full}}=\mathcal H_+\oplus\mathcal H_-,
+\qquad
+\mathcal H_\pm:=\ker(P\mp I),
+\end{equation}
+is an orthogonal decomposition into invariant subspaces for every $H^{\mathrm{full}}(s)$. Moreover, each pair $\{y,\bar y\}$ consists of two distinct basis indices with the same value of $c$. The two smallest ordered eigenvalues of $H_P^{\mathrm{full}}$ therefore coincide, so the full-space endpoint gap is zero. The restriction below removes this duplication by selecting one invariant block.
+
+The vector
+\begin{equation}
+2^{-n_v/2}\sum_{y\in\{0,1\}^{n_v}}\ket{y}
+=\ket{+}^{\otimes n_v}
+\end{equation}
+is the unique zero-eigenvalue vector of $H_I^{\mathrm{full}}$ and belongs to $\mathcal H_+$. We therefore work with the restriction to $\mathcal H_+$. Put $N=n_v-1$. Every complement pair contains a unique string whose first coordinate is zero, so the vectors
 \begin{equation}
 \label{eq:even-basis}
-\ket{x}_+:=\frac{\ket{0x}+\ket{1\bar x}}{\sqrt2}.
+\ket{x}_+:=\frac{\ket{0x}+\ket{1\bar x}}{\sqrt2},
+\qquad x\in\{0,1\}^N,
 \end{equation}
-These vectors form an orthonormal basis of $\mathcal H_+$. The map
+are fixed by $P$, have disjoint supports, and exhaust the $2^N$ complement pairs. They consequently form an orthonormal basis of $\mathcal H_+$. The map
 \begin{equation}
 U_+:(\mathbb C^2)^{\otimes N}\longrightarrow\mathcal H_+,
 \qquad U_+\ket{x}=\ket{x}_+,
 \end{equation}
-is therefore a unitary identification. We use the reduced operators
+is unitary, and the corresponding matrix representations are
 \begin{equation}
-H_{I,+}=U_+^\dagger H_I^{\mathrm{phys}}U_+,
+H_{I,+}:=U_+^\dagger H_I^{\mathrm{full}}U_+,
 \qquad
-H_{P,+}=U_+^\dagger H_P^{\mathrm{phys}}U_+,
+H_{P,+}:=U_+^\dagger H_P^{\mathrm{full}}U_+,
 \qquad
-H_+(s)=(1-s)H_{I,+}+sH_{P,+}.
+H_+(s):=(1-s)H_{I,+}+sH_{P,+}.
 \end{equation}
-Thus $d_+=2^N$. The labels $N\in\{10,12,14\}$ in the figures and tables denote effective qubits, corresponding to $n_v\in\{11,13,15\}$ physical vertices. If $E_{0,+}(s)\le E_{1,+}(s)\le\cdots$ are the reduced ordered eigenvalues, the computational gap is
+Thus the reduced matrix dimension is $d_+=2^N$. In the figures and tables, $N\in\{10,12,14\}$ is this logarithmic dimension parameter, corresponding to graphs with $n_v\in\{11,13,15\}$ vertices. If
+\begin{equation}
+E_{0,+}(s)\le E_{1,+}(s)\le\cdots\le E_{d_+-1,+}(s)
+\end{equation}
+are the ordered eigenvalues of $H_+(s)$, we study the reduced spectral gap
 \begin{equation}
 \Delta_+(s):=E_{1,+}(s)-E_{0,+}(s).
 \end{equation}
 
-The physical driver is $H_I^{\mathrm{phys}}=\frac12\sum_{i=1}^{n_v}(I-X_i)$. Under $U_+$, flipping the first physical bit complements all $N$ representative bits, while flipping physical bit $i>1$ flips representative bit $i-1$. Hence
+The action of the coordinate matrices under $U_+$ is
 \begin{equation}
+U_+^\dagger X_1U_+=\prod_{i=1}^NX_i,
+\qquad
+U_+^\dagger X_{i+1}U_+=X_i,
+\quad i=1,\ldots,N.
+\end{equation}
+It follows that
+\begin{equation}
+\label{eq:reduced-driver-matrix}
 H_{I,+}=\frac12\left(n_vI-\sum_{i=1}^NX_i-\prod_{i=1}^NX_i\right).
 \end{equation}
-It is PSD with $E_{0,+}(0)=0$. The even sector admits only even driver excitation number, so
+The matrices in Eq.~\eqref{eq:reduced-driver-matrix} commute. On a simultaneous eigenvector with $X_i$-eigenvalues $\xi_i\in\{-1,1\}$, let $q:=|\{i:\xi_i=-1\}|$. Since $n_v=N+1$, the corresponding eigenvalue is
+\begin{equation}
+\label{eq:reduced-driver-spectrum}
+\frac12\left(n_v-\sum_{i=1}^N\xi_i-\prod_{i=1}^N\xi_i\right)
+=\begin{cases}
+q,&q\ \text{even},\\
+q+1,&q\ \text{odd}.
+\end{cases}
+\end{equation}
+The value $0$ occurs only when $q=0$, so it is a simple eigenvalue; every other simultaneous eigenvector has eigenvalue at least $2$, and $q=1$ attains $2$. Consequently, $H_{I,+}\ge0$, $E_{0,+}(0)=0$, and
 \begin{equation}
 \Delta_+(0)=2.
 \end{equation}
-The reduced problem Hamiltonian, which assigns a penalty to uncut edges, is diagonal:
+
+The second reduced endpoint is diagonal and has the explicit form
 \begin{equation}
+\label{eq:reduced-problem-matrix}
 H_{P,+}=\sum_{j:(1,j)\in E}w_{1j}\frac{I+Z_{j-1}}{2}
 +\sum_{(i,j)\in E,\ i,j>1}w_{ij}\frac{I+Z_{i-1}Z_{j-1}}{2}.
 \end{equation}
-Both $H_{I,+}$ and $H_{P,+}$ are PSD.
+Every factor $(I+Z_{j-1})/2$ or $(I+Z_{i-1}Z_{j-1})/2$ is an orthogonal projection. Because $w_{ij}>0$, this proves $H_{P,+}\ge0$.
 
-There is also a structural positivity fact specific to these benchmarks. In the basis~\eqref{eq:even-basis}, $H_+(s)$ has nonpositive off-diagonal entries for $0\le s<1$, and the single-bit-flip terms connect the full $N$-dimensional hypercube. After a sufficiently large scalar shift, $aI-H_+(s)$ is therefore entrywise nonnegative and irreducible. Perron--Frobenius implies that $H_+(s)$ has a unique ground state with strictly positive basis amplitudes for every $s<1$. This argument does not settle the endpoint $s=1$, where the off-diagonal driver terms vanish. Endpoint nondegeneracy is therefore treated numerically in the instance selection, consistently with the conditional scope of the experiments.
+Finally, simplicity of the smallest eigenvalue on $[0,1)$ follows from a matrix-theoretic argument. In the basis induced by Eq.~\eqref{eq:even-basis}, every off-diagonal entry of $H_+(s)$ is nonpositive when $s<1$. The nonzero entries generated by the matrices $X_i$ contain the edge set of the $N$-dimensional hypercube and hence define a connected graph. Choose $a$ large enough that $A(s):=aI-H_+(s)$ is entrywise nonnegative. The matrix $A(s)$ is irreducible, so the Perron--Frobenius theorem gives a simple largest eigenvalue with an eigenvector having strictly positive coordinates. Since the eigenvalues of $A(s)$ are $a-E_{j,+}(s)$, the smallest eigenvalue $E_{0,+}(s)$ of $H_+(s)$ is simple for every $0\le s<1$. At $s=1$ the off-diagonal entries vanish, so irreducibility no longer applies; simplicity of $E_{0,+}(1)$ is instead assessed numerically when instances are selected.
 
 \subsection{Endpoint-Only and Local Gap Bounds}
 Let
@@ -453,7 +509,7 @@ K_{\mathrm{gap},+}\le W+\Lambda_I\le K_{\mathrm{gap}}^{\mathrm{ub}}.
 \begin{proof}
 Write $H_{P,+}=\sum_{e\in E}w_e\Pi_e$. In the displayed formula for $H_{P,+}$, each $\Pi_e=(I+Q_e)/2$, where $Q_e$ is either a single $Z$ operator or a product of two $Z$ operators. Since $Q_e=Q_e^\dagger$ and $Q_e^2=I$, the operator $\Pi_e$ is an orthogonal projection. Thus $0\le\Pi_e\le I$, and summing with $w_e>0$ proves the first inequality in Eq.~\eqref{eq:endpoint-operator-order}.
 
-For the driver, an $X$-basis eigenvector of $H_I^{\mathrm{phys}}$ with $q$ single-qubit $\ket{-}$ factors has energy $q$ and global-spin-flip eigenvalue $(-1)^q$. Its restriction to the even sector therefore has $q\in\{0,2,\ldots,2\lfloor n_v/2\rfloor\}$. Unitary reduction by $U_+$ preserves this spectrum, proving the second inequality in Eq.~\eqref{eq:endpoint-operator-order}. Finally,
+Equation~\eqref{eq:reduced-driver-spectrum} shows that the spectrum of $H_{I,+}$ is contained in $[0,\Lambda_I]$ and attains both endpoints, proving the second inequality in Eq.~\eqref{eq:endpoint-operator-order}. Finally,
 \begin{equation}
 D_+=H_{P,+}-H_{I,+}\ge-H_{I,+}\ge-\Lambda_I I,
 \qquad
