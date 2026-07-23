@@ -12,3 +12,12 @@ __pycache__/
 *.fdb_latexmk
 *.fls
 *.pdf
+
+# Removed document sources and local build workspaces
+/main.tex
+/references.bib
+/main.pdf
+/main_compiled*
+/output/
+/tmp/
+/tmp_check/

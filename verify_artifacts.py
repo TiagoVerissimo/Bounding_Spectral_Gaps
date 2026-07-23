@@ -1083,11 +1083,11 @@ def verify() -> int:
     )
     print("Verified deterministic JSON/TeX summary regeneration.")
     print("Verified selected N=10, seed-0 Level-2 continuation algebra.")
-    print(f"Verified {len(_REQUIRED_FIGURES)} required manuscript figures.")
+    print(f"Verified {len(_REQUIRED_FIGURES)} required generated images.")
     if (RESULTS_DIR / "runtime_scaling.png").exists():
         print(
             "Warning: legacy results/runtime_scaling.png is present but is not "
-            "generated or treated as a manuscript artifact.",
+            "generated or treated as a checked artifact.",
             file=sys.stderr,
         )
     return 0
